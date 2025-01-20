@@ -1,0 +1,96 @@
+/* Main Container - Apply the gradient color uniformly across the entire page */
+.auth-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #aac4e8, #d4d9f5); /* Uniform gradient background */
+  justify-content: center;
+  align-items: center;
+}
+
+/* Left Panel Styling (Welcome Message) */
+.left-panel {
+  flex: 1; /* Take up 50% of the width */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: #2e2e2e;
+}
+
+/* Right Panel Styling (Login Card) */
+.right-panel {
+  flex: 1; /* Take up 50% of the width */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 30px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9); /* White with slight transparency */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+}
+
+/* Form Header */
+.auth-card h2 {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #2e2e2e;
+  margin-bottom: 20px;
+}
+
+/* Form Field Labels */
+.auth-card label {
+  font-weight: 500;
+  color: #4a4a4a;
+}
+
+.auth-card .form-control {
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: none;
+  transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.auth-card .form-control:focus {
+  border-color: #5a74b4;
+  box-shadow: 0 0 5px rgba(90, 116, 180, 0.5);
+}
+
+.auth-card .btn-primary {
+  background-color: #5a74b4;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.auth-card .btn-primary:hover {
+  background-color: #465a94;
+}
+
+/* Footer Links */
+.auth-card .auth-footer {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #4a4a4a;
+}
+
+.auth-card .auth-footer span {
+  color: #5a74b4;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.auth-card .auth-footer span:hover {
+  text-decoration: underline;
+}
