@@ -1,31 +1,76 @@
-/* Main Container - Apply the gradient color uniformly across the entire page */
+/* Main container styling with gradient background */
 .auth-container {
   display: flex;
   height: 100vh;
   width: 100%;
-  background: linear-gradient(135deg, #aac4e8, #d4d9f5); /* Uniform gradient background */
+  background: linear-gradient(135deg, #d4e7f2, #e4f0f8); /* Subtle background gradient */
   justify-content: center;
   align-items: center;
+  position: relative;
+  overflow: hidden;
+  animation: gradientAnimation 6s ease-in-out infinite; /* Smooth gradient animation */
 }
 
-/* Left Panel Styling (Welcome Message) */
+/* Keyframe for background gradient animation */
+@keyframes gradientAnimation {
+  0% {
+    background: linear-gradient(135deg, #d4e7f2, #e4f0f8);
+  }
+  50% {
+    background: linear-gradient(135deg, #e4f0f8, #d4e7f2);
+  }
+  100% {
+    background: linear-gradient(135deg, #d4e7f2, #e4f0f8);
+  }
+}
+
+/* Left Panel: Text content */
 .left-panel {
-  flex: 1; /* Take up 50% of the width */
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  text-align: center;
+  align-items: center;
   padding: 20px;
+  text-align: center;
+  color: #4a4a4a;
+  font-family: 'Roboto', sans-serif;
+  animation: fadeIn 2s ease-in-out; /* Fade-in animation */
+  height: 100%; /* Ensures the panel occupies available space */
+}
+
+/* Fade-in animation for text */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Welcome Text Styling */
+.left-panel h1 {
+  font-size: 3rem;
+  font-weight: 700;
   color: #2e2e2e;
 }
 
-/* Right Panel Styling (Login Card) */
+.left-panel p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #4a4a4a;
+  margin-top: 10px;
+}
+
+/* Right Panel: Login/Signup Form */
 .right-panel {
-  flex: 1; /* Take up 50% of the width */
+  flex: 1;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   padding: 20px;
 }
 
@@ -34,30 +79,25 @@
   max-width: 400px;
   padding: 30px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9); /* White with slight transparency */
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Soft shadow for the card */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 20px; /* Added margin for spacing */
 }
 
-/* Form Header */
-.auth-card h2 {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #2e2e2e;
-  margin-bottom: 20px;
+.auth-card:hover {
+  transform: translateY(-5px); /* Hover effect for the card */
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2); /* Hover shadow effect */
 }
 
-/* Form Field Labels */
-.auth-card label {
-  font-weight: 500;
-  color: #4a4a4a;
-}
-
+/* Form Input Fields */
 .auth-card .form-control {
   border: 1px solid #ced4da;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
   box-shadow: none;
-  transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  transition: border-color 0.3s ease-in-out;
+  margin-bottom: 20px; /* Added space between fields */
 }
 
 .auth-card .form-control:focus {
@@ -65,32 +105,139 @@
   box-shadow: 0 0 5px rgba(90, 116, 180, 0.5);
 }
 
+/* Button Hover Effects (Subtle Animation) */
 .auth-card .btn-primary {
   background-color: #5a74b4;
   border: none;
-  padding: 10px 20px;
+  padding: 12px 20px;
   font-size: 1rem;
   border-radius: 8px;
-  transition: background-color 0.3s ease-in-out;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  margin-top: 20px; /* Add margin to separate button from the text */
 }
 
 .auth-card .btn-primary:hover {
   background-color: #465a94;
+  transform: scale(1.05); /* Hover zoom effect */
 }
 
-/* Footer Links */
+/* Footer Links Styling */
 .auth-card .auth-footer {
-  margin-top: 15px;
-  font-size: 0.9rem;
+  margin-top: 20px; /* Increased gap between form and footer */
+  font-size: 1rem;
   color: #4a4a4a;
+  font-weight: 600;
+  text-align: center; /* Center align footer links */
 }
 
 .auth-card .auth-footer span {
-  color: #5a74b4;
+  color: #5a74b4; /* Blue color for signup and reset links */
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .auth-card .auth-footer span:hover {
-  text-decoration: underline;
+  text-decoration: underline; /* Underline on hover for better UI */
+}
+
+/* Center the Login/Signup Heading */
+.auth-card h2 {
+  font-size: 2.2rem;
+  font-weight: bold;
+  text-align: center;
+  color: #2e2e2e;
+  margin-bottom: 20px; /* Space between heading and form fields */
+}
+
+/* Make "Don't have an account?" and "Forgot password?" bold */
+.auth-card .auth-footer h3 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+  text-align: center; /* Center aligned for mobile */
+}
+
+.auth-card .auth-footer h3 span {
+  color: #5a74b4; /* Blue color for links */
+}
+
+/* Responsive Design: Adjusting image for smaller devices */
+@media screen and (max-width: 770px) {
+  .welcome-image {
+    display: none; /* Hide the image on small screens */
+  }
+
+  .auth-container {
+    flex-direction: column; /* Stack left and right panels on smaller screens */
+    align-items: center;
+  }
+
+  .left-panel {
+    margin-bottom: 20px; /* Add space between panels */
+    height: auto; /* Remove fixed height */
+    padding: 20px;
+  }
+
+  .right-panel {
+    width: 100%;
+  }
+
+  .auth-card {
+    margin-top: 20px; /* Add margin above the card */
+  }
+
+  .left-panel h1 {
+    font-size: 2.5rem; /* Smaller heading on mobile */
+  }
+
+  .left-panel p {
+    font-size: 1rem; /* Smaller text on mobile */
+  }
+
+  .auth-card h2 {
+    font-size: 1.8rem; /* Adjust the login/signup heading size for small screens */
+  }
+
+  .auth-footer {
+    font-size: 0.9rem;
+    margin-top: 20px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .auth-container {
+    padding: 10px; /* Reduce padding on extra small screens */
+  }
+
+  .left-panel h1 {
+    font-size: 2rem; /* Adjust heading size for small screens */
+  }
+
+  .left-panel p {
+    font-size: 0.9rem; /* Adjust paragraph text size */
+  }
+
+  .welcome-image {
+    width: 80%; /* Adjust image size for very small screens */
+    max-width: 250px;
+  }
+}
+.SignupButton{
+  color: #465A94;
+  font-weight: 600;
+}
+.ResetPassword{
+  color: #465A94;
+  font-weight: 600;
+}
+.Account{
+  margin-top: 20px;
+}
+.haveaccount{
+  margin-top: 20px;
+}
+.LoginHere{
+  color: #465A94;
 }
