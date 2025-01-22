@@ -1,7 +1,8 @@
 import { useState } from "react";
 import PropTypes from "prop-types"; // Import PropTypes for validation
-import { db } from "../../firebaseConfig"; // Import Firestore from your firebaseConfig
+import { db, auth } from "../../firebaseConfig"; // Import Firestore and Firebase Auth from your firebaseConfig
 import { collection, addDoc } from "firebase/firestore"; // Import Firestore functions
+import { createUserWithEmailAndPassword } from "firebase/auth"; // Import Firebase Authentication
 import "./AuthPage.css";
 import Image2 from "../../assets/Image2.png"; // Import the image
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons for password visibility toggle
@@ -18,16 +19,20 @@ const Signup = ({ onSwitch }) => {
   const [contactError, setContactError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState(""); // For Confirm Password error
+
+  const [signupError, setSignupError] = useState(""); // For Signup error
+  const [signupSuccess, setSignupSuccess] = useState(""); // For Signup success
+
   const [showPassword, setShowPassword] = useState(false); // To toggle visibility for Password
   const [showConfirmPassword, setShowConfirmPassword] = useState(false); // To toggle visibility for Confirm Password
 
   // Handle form submission and validation
   const handleSignup = async (e) => {
     e.preventDefault();
-
+  
     // Basic validations
     let isValid = true;
-
+  
     // Email Validation (must be a valid Gmail address)
     const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (!emailRegex.test(email)) {
@@ -36,7 +41,7 @@ const Signup = ({ onSwitch }) => {
     } else {
       setEmailError("");
     }
-
+  
     // Contact Number Validation (must be 10 digits)
     const contactRegex = /^[0-9]{10}$/;
     if (!contactRegex.test(contact)) {
@@ -45,7 +50,7 @@ const Signup = ({ onSwitch }) => {
     } else {
       setContactError("");
     }
-
+  
     // Password Validation (must match the criteria)
     if (password.length < 6) {
       setPasswordError("Password must be at least 6 characters.");
@@ -53,7 +58,7 @@ const Signup = ({ onSwitch }) => {
     } else {
       setPasswordError("");
     }
-
+  
     // Confirm Password Validation (must match the password)
     if (password !== confirmPassword) {
       setConfirmPasswordError("Passwords do not match.");
@@ -61,10 +66,13 @@ const Signup = ({ onSwitch }) => {
     } else {
       setConfirmPasswordError("");
     }
-
+  
     // If all validations pass, submit the form
     if (isValid) {
       try {
+        // Create user using Firebase Authentication
+        await createUserWithEmailAndPassword(auth, email, password);
+  
         // Add data to Firestore based on account type
         const userRef = collection(db, accountType); // Dynamically select the collection
         await addDoc(userRef, {
@@ -73,15 +81,23 @@ const Signup = ({ onSwitch }) => {
           contact,
           accountType,
         });
-
+  
+        setSignupSuccess("Signup successful! Redirecting to login...");
+        setSignupError(""); // Clear any previous errors
         console.log("User data stored in Firestore successfully!");
         onSwitch("login"); // Switch to the login page after successful signup
       } catch (error) {
-        console.error("Error storing data in Firestore: ", error);
+        if (error.code === 'auth/email-already-in-use') {
+          setSignupError("An account with this email already exists.");
+        } else {
+          setSignupError("An error occurred while signing up. Please try again.");
+        }
+        setSignupSuccess(""); // Clear any success messages
+        console.error("Error during signup: ", error);
       }
     }
   };
-
+  
   // Handle Contact Number Input
   const handleContactChange = (e) => {
     const value = e.target.value;
@@ -207,6 +223,10 @@ const Signup = ({ onSwitch }) => {
               </div>
               {confirmPasswordError && <div className="text-danger">{confirmPasswordError}</div>}
             </div>
+
+            {/* Show signup success or error */}
+            {signupError && <div className="text-danger">{signupError}</div>}
+            {signupSuccess && <div className="text-success">{signupSuccess}</div>}
 
             <button type="submit" className="btn btn-primary w-100">
               Signup
