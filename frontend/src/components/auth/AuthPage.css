@@ -12,19 +12,6 @@
   box-sizing: border-box; /* Ensure padding does not overflow */
 }
 
-/* Keyframe for background gradient animation */
-@keyframes gradientAnimation {
-  0% {
-    background: linear-gradient(135deg, #d4e7f2, #e4f0f8);
-  }
-  50% {
-    background: linear-gradient(135deg, #e4f0f8, #d4e7f2);
-  }
-  100% {
-    background: linear-gradient(135deg, #d4e7f2, #e4f0f8);
-  }
-}
-
 /* Left Panel: Text content */
 .left-panel {
   flex: 1;
@@ -38,18 +25,7 @@
   font-family: 'Roboto', sans-serif;
   animation: fadeIn 2s ease-in-out; /* Fade-in animation */
   height: 100%; /* Ensures the panel occupies available space */
-}
-
-/* Fade-in animation for text */
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  margin-right: 60px; /* Increased space between the left and right panel */
 }
 
 /* Welcome Text Styling */
@@ -66,18 +42,15 @@
   margin-top: 10px;
 }
 
-.welcome-image {
-  max-width: 90%;
-  margin-top: 20px;
-}
-
-/* Right Panel: Signup Form */
+/* Right Panel: Login/Signup Form */
 .right-panel {
   flex: 1;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-start; /* Align the form at the top on small screens */
+  align-items: center; /* Center the content */
   padding: 20px;
+  width: 100%;
+  margin-left: 60px; /* Increased space between the left and right panel */
 }
 
 .auth-card {
@@ -109,7 +82,6 @@
   font-weight: bold;
   color: #495057;
   text-align: center;
-  padding-left: 15px; /* Ensure the +91 is aligned with the input */
 }
 
 .form-control {
@@ -156,32 +128,58 @@
 /* Adjusting input field sizes and spacing for responsiveness */
 @media screen and (max-width: 770px) {
   .auth-container {
-    flex-direction: column;
+    flex-direction: column; /* Stack left and right panels on smaller screens */
     align-items: center;
+    justify-content: flex-start;
+    height: 100%; /* Ensure everything fits within screen */
   }
+
+  .left-panel {
+    margin-bottom: 20px; /* Add space between the text and form */
+  }
+
+  .left-panel h1 {
+    font-size: 2.5rem; /* Smaller heading on mobile */
+  }
+
+  .left-panel p {
+    font-size: 1rem; /* Smaller text on mobile */
+  }
+
   .right-panel {
     width: 100%;
+    margin-top: 20px; /* Add space on top of the form card */
   }
+
   .auth-card {
     margin-top: 20px;
     max-width: 100%; /* Allow card to use full available width */
+    padding: 20px; /* Adjust padding */
+  }
+
+  .welcome-image {
+    display: none; /* Hide the image on small screens */
   }
 }
 
 @media screen and (max-width: 480px) {
   .auth-container {
-    padding: 5px; /* Adjust padding for smaller screens */
-  }
-
-  .auth-card {
-    padding: 20px; /* Reduce padding for smaller screens */
+    padding: 10px; /* Reduce padding on extra small screens */
   }
 
   .left-panel h1 {
-    font-size: 2.5rem;
+    font-size: 1.8rem; /* Adjust heading size for very small screens */
   }
 
   .left-panel p {
-    font-size: 1rem;
+    font-size: 0.9rem; /* Adjust paragraph text size */
+  }
+
+  .auth-card {
+    padding: 15px; /* Reduced padding for small screens */
+  }
+
+  .auth-card h2 {
+    font-size: 1.6rem; /* Smaller text for heading */
   }
 }
