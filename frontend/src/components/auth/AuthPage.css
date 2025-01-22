@@ -7,8 +7,9 @@
   justify-content: center;
   align-items: center;
   position: relative;
-  overflow: hidden;
-  animation: gradientAnimation 6s ease-in-out infinite; /* Smooth gradient animation */
+  overflow: hidden; /* Prevent overflow */
+  padding: 10px; /* Add some padding for better layout */
+  box-sizing: border-box; /* Ensure padding does not overflow */
 }
 
 /* Keyframe for background gradient animation */
@@ -65,7 +66,12 @@
   margin-top: 10px;
 }
 
-/* Right Panel: Login/Signup Form */
+.welcome-image {
+  max-width: 90%;
+  margin-top: 20px;
+}
+
+/* Right Panel: Signup Form */
 .right-panel {
   flex: 1;
   display: flex;
@@ -76,13 +82,14 @@
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
   padding: 30px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Soft shadow for the card */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  margin: 20px; /* Added margin for spacing */
+  margin: 20px;
+  overflow-y: auto; /* Allow content inside card to scroll if needed */
 }
 
 .auth-card:hover {
@@ -90,22 +97,47 @@
   box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2); /* Hover shadow effect */
 }
 
-/* Form Input Fields */
-.auth-card .form-control {
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: none;
-  transition: border-color 0.3s ease-in-out;
-  margin-bottom: 20px; /* Added space between fields */
+/* Input Group for Contact */
+.input-group {
+  display: flex;
+  width: 100%;
 }
 
-.auth-card .form-control:focus {
+.input-group-text {
+  background-color: #f8f9fa;
+  border-right: 0;
+  font-weight: bold;
+  color: #495057;
+  text-align: center;
+  padding-left: 15px; /* Ensure the +91 is aligned with the input */
+}
+
+.form-control {
+  border-left: 0;
+  border-radius: 8px;
+  padding-left: 10px;
+  height: calc(1.5em + .75rem + 2px);
+}
+
+.form-control:focus {
   border-color: #5a74b4;
   box-shadow: 0 0 5px rgba(90, 116, 180, 0.5);
 }
 
-/* Button Hover Effects (Subtle Animation) */
+/* Eye Icon for Password */
+.input-group-text {
+  cursor: pointer;
+}
+
+/* Other Styling */
+.auth-card h2 {
+  font-size: 2.2rem;
+  font-weight: bold;
+  text-align: center;
+  color: #2e2e2e;
+  margin-bottom: 20px;
+}
+
 .auth-card .btn-primary {
   background-color: #5a74b4;
   border: none;
@@ -113,131 +145,43 @@
   font-size: 1rem;
   border-radius: 8px;
   transition: background-color 0.3s ease, transform 0.3s ease;
-  margin-top: 20px; /* Add margin to separate button from the text */
+  margin-top: 20px;
 }
 
 .auth-card .btn-primary:hover {
   background-color: #465a94;
-  transform: scale(1.05); /* Hover zoom effect */
+  transform: scale(1.05);
 }
 
-/* Footer Links Styling */
-.auth-card .auth-footer {
-  margin-top: 20px; /* Increased gap between form and footer */
-  font-size: 1rem;
-  color: #4a4a4a;
-  font-weight: 600;
-  text-align: center; /* Center align footer links */
-}
-
-.auth-card .auth-footer span {
-  color: #5a74b4; /* Blue color for signup and reset links */
-  cursor: pointer;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.auth-card .auth-footer span:hover {
-  text-decoration: underline; /* Underline on hover for better UI */
-}
-
-/* Center the Login/Signup Heading */
-.auth-card h2 {
-  font-size: 2.2rem;
-  font-weight: bold;
-  text-align: center;
-  color: #2e2e2e;
-  margin-bottom: 20px; /* Space between heading and form fields */
-}
-
-/* Make "Don't have an account?" and "Forgot password?" bold */
-.auth-card .auth-footer h3 {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-  text-align: center; /* Center aligned for mobile */
-}
-
-.auth-card .auth-footer h3 span {
-  color: #5a74b4; /* Blue color for links */
-}
-
-/* Responsive Design: Adjusting image for smaller devices */
+/* Adjusting input field sizes and spacing for responsiveness */
 @media screen and (max-width: 770px) {
-  .welcome-image {
-    display: none; /* Hide the image on small screens */
-  }
-
   .auth-container {
-    flex-direction: column; /* Stack left and right panels on smaller screens */
+    flex-direction: column;
     align-items: center;
   }
-
-  .left-panel {
-    margin-bottom: 20px; /* Add space between panels */
-    height: auto; /* Remove fixed height */
-    padding: 20px;
-  }
-
   .right-panel {
     width: 100%;
   }
-
   .auth-card {
-    margin-top: 20px; /* Add margin above the card */
-  }
-
-  .left-panel h1 {
-    font-size: 2.5rem; /* Smaller heading on mobile */
-  }
-
-  .left-panel p {
-    font-size: 1rem; /* Smaller text on mobile */
-  }
-
-  .auth-card h2 {
-    font-size: 1.8rem; /* Adjust the login/signup heading size for small screens */
-  }
-
-  .auth-footer {
-    font-size: 0.9rem;
     margin-top: 20px;
+    max-width: 100%; /* Allow card to use full available width */
   }
 }
 
 @media screen and (max-width: 480px) {
   .auth-container {
-    padding: 10px; /* Reduce padding on extra small screens */
+    padding: 5px; /* Adjust padding for smaller screens */
+  }
+
+  .auth-card {
+    padding: 20px; /* Reduce padding for smaller screens */
   }
 
   .left-panel h1 {
-    font-size: 2rem; /* Adjust heading size for small screens */
+    font-size: 2.5rem;
   }
 
   .left-panel p {
-    font-size: 0.9rem; /* Adjust paragraph text size */
+    font-size: 1rem;
   }
-
-  .welcome-image {
-    width: 80%; /* Adjust image size for very small screens */
-    max-width: 250px;
-  }
-}
-.SignupButton{
-  color: #465A94;
-  font-weight: 600;
-}
-.ResetPassword{
-  color: #465A94;
-  font-weight: 600;
-}
-.Account{
-  margin-top: 20px;
-}
-.haveaccount{
-  margin-top: 20px;
-}
-.LoginHere{
-  color: #465A94;
 }
