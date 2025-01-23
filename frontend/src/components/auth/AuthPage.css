@@ -136,6 +136,8 @@
 
   .left-panel {
     margin-bottom: 20px; /* Add space between the text and form */
+    margin-right: 0; /* Remove right margin */
+    padding: 10px; /* Adjust padding */
   }
 
   .left-panel h1 {
@@ -149,6 +151,7 @@
   .right-panel {
     width: 100%;
     margin-top: 20px; /* Add space on top of the form card */
+    margin-left: 0; /* Remove left margin */
   }
 
   .auth-card {
@@ -182,4 +185,19 @@
   .auth-card h2 {
     font-size: 1.6rem; /* Smaller text for heading */
   }
+}
+.ResetPassword{
+  color: #465a94;
+  font-weight: 600;
+}
+.SignupButton,
+.LoginHere{
+  color: #465a94;
+  font-weight: 600;
+}
+.Account{
+  margin-top: 20px;
+}
+.haveaccount{
+  margin-top: 20px;
 }
