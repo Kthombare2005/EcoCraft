@@ -17,3 +17,28 @@ const App = () => {
 };
 
 export default App;
+
+
+
+// import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+// import Login from "./components/auth/Login";
+// import Signup from "./components/auth/Signup";
+// import SellerDashboard from "./components/dashboard/SellerDashboard";
+// import ScraperDashboard from "./components/dashboard/ScraperDashboard";
+// import ArtisanDashboard from "./components/dashboard/ArtisanDashboard";
+
+// function App() {
+//   return (
+//     <Router>
+//       <Routes>
+//         <Route path="/" element={<Login />} />
+//         <Route path="/signup" element={<Signup />} />
+//         <Route path="/dashboard/seller" element={<SellerDashboard />} />
+//         <Route path="/dashboard/scraper" element={<ScraperDashboard />} />
+//         <Route path="/dashboard/artisan" element={<ArtisanDashboard />} />
+//       </Routes>
+//     </Router>
+//   );
+// }
+
+// export default App;
