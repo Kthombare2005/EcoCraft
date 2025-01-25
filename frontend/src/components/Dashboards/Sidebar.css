@@ -213,17 +213,20 @@ body {
 /* Dashboard */
 .dashboard {
     flex-grow: 1;
-    background-color: #fff; /* Set the background to white */
+    background-color: #fff; /* Ensure the background is fully white */
     transition: margin-left 0.5s ease-in-out;
     height: 100vh;
     width: calc(100vw - 300px); /* Adjust width based on sidebar */
-    overflow-y: auto;
-    box-shadow: -15px 0 25px rgba(0, 0, 0, 0.05); /* Add subtle shadow for separation */
+    overflow-y: auto; /* Allow vertical scrolling */
+    overflow-x: hidden; /* Disable horizontal scrolling */
+    padding: 20px; /* Add padding for better spacing */
+    box-shadow: -15px 0 25px rgba(0, 0, 0, 0.05); /* Optional: Add subtle shadow */
 }
 
 .dashboard.sidebar-collapsed {
     width: calc(100vw - 80px); /* Adjust width for collapsed sidebar */
 }
+
 
 
 /* Responsive Design */
