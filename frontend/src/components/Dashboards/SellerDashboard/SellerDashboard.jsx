@@ -15,46 +15,35 @@
 
 
 
-import { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
-import Sidebar from '../Sidebar'; // Adjust the path if necessary
+import { useState} from "react";
+import { Box, Typography } from "@mui/material";
+import Sidebar from "../Sidebar"; // Ensure this is the correct path
 
 const SellerDashboard = () => {
-  const [greeting, setGreeting] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Update greeting based on time of day
-  useEffect(() => {
-    const updateGreeting = () => {
-      const hour = new Date().getHours();
-      if (hour < 12) setGreeting("Good Morning");
-      else if (hour < 18) setGreeting("Good Afternoon");
-      else setGreeting("Good Evening");
-    };
-
-    updateGreeting();
-    const interval = setInterval(updateGreeting, 60000); // Update every minute
-    return () => clearInterval(interval); // Cleanup interval
-  }, []);
+  const handleSidebarToggle = (collapsed) => {
+    setIsCollapsed(collapsed);
+  };
 
   return (
-    <Box sx={{ display: 'flex', backgroundColor: '#DCEBF5', minHeight: '100vh' }}>
-      <Sidebar />
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      <Sidebar onToggle={handleSidebarToggle} />
       <Box
-        component="main"
         sx={{
           flexGrow: 1,
-          padding: 3,
-          overflow: 'auto',
+          marginLeft: isCollapsed ? "80px" : "300px",
+          transition: "margin-left 0.5s ease-in-out",
+          padding: "20px",
+          backgroundColor: "#DCEBF5",
         }}
       >
-        <Typography variant="h4" color="primary" gutterBottom>
-          {greeting}, Seller!
+        <Typography variant="h4" sx={{ color: "#1976D2", marginBottom: "10px", width: "100vw" }}>
+          Good Evening, Seller!
         </Typography>
-        <Typography variant="h6" color="textSecondary">
+        <Typography variant="body1" sx={{ color: "#333" }}>
           Welcome to your dashboard, where you can manage all your activities.
         </Typography>
-
-        {/* Add additional sections, widgets, or content here */}
       </Box>
     </Box>
   );

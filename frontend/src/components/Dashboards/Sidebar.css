@@ -93,26 +93,26 @@ body {
 }
 
 .navigation.collapsed ul li a .title {
-    opacity: 0; /* Hide titles when collapsed */
+    opacity: 0;
     pointer-events: none;
 }
 
 /* Active State */
 .navigation ul li.active {
-    background: #fff; /* Active background color */
+    background: #fff;
     color: #008B68;
 }
 
 .navigation ul li.active a {
-    color: #008B68; /* Active text color */
+    color: #008B68;
 }
 
 .navigation ul li.active .icon ion-icon {
-    color: #008B68; /* Active icon color */
+    color: #008B68;
 }
 
 .navigation ul li.active:hover {
-    background: #e0f7f1; /*Slightly lighter background on hover*/
+    background: #e0f7f1;
 }
 
 /* EcoCraft Branding */
@@ -170,7 +170,7 @@ body {
 /* Logout - Positioned above the toggle button */
 .logout {
     position: absolute;
-    bottom: 80px; /* Above the toggle button */
+    bottom: 80px;
     left: 0;
     width: 100%;
     padding: 10px;
@@ -181,16 +181,16 @@ body {
 
 .logout a {
     display: flex;
-    align-items: center; /* Center the icon and text */
-    padding: 10px; /* Add spacing like other items */
+    align-items: center;
+    padding: 10px;
     color: #fff;
     text-decoration: none;
-    font-size: 1.25rem; /* Match font size with other sidebar items */
-    font-weight: 500; /* Match font weight */
+    font-size: 1.25rem;
+    font-weight: 500;
 }
 
 .logout a .icon {
-    min-width: 60px; /* Match the width of other icons */
+    min-width: 60px;
     height: 60px;
     display: flex;
     justify-content: center;
@@ -198,46 +198,48 @@ body {
 }
 
 .logout a .icon ion-icon {
-    font-size: 1.75rem; /* Match icon size with other items */
+    font-size: 1.75rem;
 }
 
 .logout:hover {
-    background: #fff; /* Similar hover effect as others */
+    background: #fff;
     color: #008B68;
 }
 
 .logout:hover a {
-    color: #008B68; /* Similar hover text color */
+    color: #008B68;
 }
 
 /* Dashboard */
 .dashboard {
     flex-grow: 1;
-    margin-left: 300px; /* Default margin with expanded sidebar */
-    background: #fff;
-    padding: 20px 20px 20px 40px;
-    transition: margin-left 0.5s ease-in-out; /* Smooth transition for margin adjustment */
-}
+    background-color: #dcebf5;
+    transition: margin-left 0.5s ease-in-out;
+    height: 100vh;
+    width: 100vw;
+    overflow-y: auto;
+  }
+  
 
 .dashboard.sidebar-collapsed {
-    margin-left: 80px; /* Adjust margin for collapsed sidebar */
+    margin-left: 80px;
 }
 
 /* Responsive Design */
 @media screen and (max-width: 768px) {
     .navigation {
-        width: 80px; /* Collapsed sidebar by default */
+        width: 80px;
     }
 
     .navigation ul li.brand {
-        display: none; /* Hide EcoCraft branding */
+        display: none;
     }
 
     .navigation ul li a .title {
-        display: none; /* Hide text labels for icons */
+        display: none;
     }
 
     .dashboard {
-        margin-left: 80px; /* Align with collapsed sidebar */
+        margin-left: 80px;
     }
 }
