@@ -1,0 +1,12 @@
+.home-container {
+    padding: 20px;
+    text-align: center;
+    background: #fff;
+  }
+  
+  .welcome-message {
+    font-size: 2.5rem;
+    color: #0BC19B;
+    font-weight: 700;
+  }
+  

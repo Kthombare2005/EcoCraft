@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import AuthPage from "./components/auth/AuthPage"; // Ensure this is correctly importing AuthPage
-import SellerDashboard from "./components/Dashboards/SellerDashboard";
+import SellerDashboard from "./components/Dashboards/SellerDashboard/SellerDashboard";
 import ScraperDashboard from "./components/Dashboards/ScraperDashboard";
 import ArtisanDashboard from "./components/Dashboards/ArtisanDashboard";
 
