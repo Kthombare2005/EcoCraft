@@ -1,296 +1,499 @@
-// import { useState, useEffect } from "react";
-// import { Box, Typography } from "@mui/material";
-// import Sidebar from "../Sidebar"; // Ensure this is the correct path
-// import { auth, onAuthStateChanged } from "../../../firebaseConfig"; // Import Firebase auth service
-// import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
-
-// const SellerDashboard = () => {
-//   const [isCollapsed, setIsCollapsed] = useState(false);
-//   const [greeting, setGreeting] = useState("");
-//   const [emoji, setEmoji] = useState("");
-//   const [userName, setUserName] = useState(""); // To hold the logged-in user's name
-//   const [loading, setLoading] = useState(true); // To handle loading state
-
-//   useEffect(() => {
-//     // Set the greeting based on the time of the day
-//     const hours = new Date().getHours();
-//     if (hours < 12) {
-//       setGreeting("Good Morning");
-//       setEmoji("☀️");
-//     } else if (hours < 18) {
-//       setGreeting("Good Afternoon");
-//       setEmoji("🌤️");
-//     } else {
-//       setGreeting("Good Evening");
-//       setEmoji("🌙");
-//     }
-
-//     // Check the authentication state and get the user's name from Firestore
-//     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-//       if (user) {
-//         // Get the user's document from Firestore
-//         const db = getFirestore();
-//         const userRef = doc(db, "users", user.uid); // Assuming the Firestore collection is 'users'
-//         const userDoc = await getDoc(userRef);
-
-//         if (userDoc.exists()) {
-//           // Set the user's name from Firestore
-//           const name = userDoc.data().name;
-//           setUserName(name);
-//         } else {
-//           // If the document doesn't exist, fallback to email
-//           setUserName(user.displayName || user.email);
-//         }
-//         setLoading(false); // Set loading to false once the user is fetched
-//       } else {
-//         setUserName("Guest");
-//         setLoading(false); // Set loading to false even if no user is logged in
-//       }
-//     });
-
-//     return () => {
-//       unsubscribe(); // Clean up the listener on component unmount
-//     };
-//   }, []);
-
-//   const handleSidebarToggle = (collapsed) => {
-//     setIsCollapsed(collapsed);
-//   };
-
-//   // If user data is still loading, show a loading message
-//   if (loading) {
-//     return (
-//       <Box sx={{ display: "flex", height: "100vh", justifyContent: "center", alignItems: "center" }}>
-//         <Typography variant="h4">Loading...</Typography>
-//       </Box>
-//     );
-//   }
-
-//   return (
-//     <Box sx={{ display: "flex", height: "100vh" }}>
-//       <Sidebar onToggle={handleSidebarToggle} />
-//       <Box
-//         sx={{
-//           flexGrow: 1,
-//           marginLeft: isCollapsed ? "80px" : "300px",
-//           transition: "margin-left 0.5s ease-in-out",
-//           padding: "20px",
-//           backgroundColor: "white",
-//         }}
-//       >
-//         <Typography
-//           variant="h4"
-//           sx={{
-//             color: "#1976D2",
-//             marginBottom: "10px",
-//             fontFamily: "'Arvo', serif, 'Playfair Display', serif, 'Playwrite VN', sans-serif", // Apply the custom fonts here
-//           }}
-//         >
-//           {greeting}, {userName}! {emoji}
-//         </Typography>
-//         <Typography variant="h6" sx={{ fontFamily: "'Playfair Display', serif", marginTop: "20px", color: "#333" }}>
-//   &quot;Sell your scrap, transform it into valuable products, and contribute to a more sustainable world!&quot;
-  
-// </Typography>
-
-
-
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default SellerDashboard;
-
-
-
-
-
-import  { useState, useEffect } from "react";
+import{ useState, useEffect } from "react";
 import { Grid, Card, CardContent, Typography, Box, useMediaQuery } from "@mui/material";
-import { Bar, Line } from "react-chartjs-2";
+import Sidebar from "../Sidebar";
+import { auth, db, onAuthStateChanged } from "../../../firebaseConfig";
+import { doc, getDoc, onSnapshot, collection, query, where } from "firebase/firestore";
+import { motion } from "framer-motion";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  BarElement,
-  LineElement,
   PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
-import Sidebar from "../Sidebar"; // ✅ Import Sidebar component
-import { auth, db, onAuthStateChanged } from "../../../firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
 
 // Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const SellerDashboard = () => {
   const [user, setUser] = useState(null);
   const [metrics, setMetrics] = useState({
-    users: 0,
-    sales: 0,
-    revenue: 0,
+    totalEarnings: 0, // ₹
+    scrapTransformed: 0, // items
+    atmosphereSaved: 0, // kg
+    activeListings: 0,
+  });
+  const [transactions, setTransactions] = useState([]);
+  const [transformations, setTransformations] = useState([]);
+  const [graphData, setGraphData] = useState({
+    scrapSold: [],
+    revenueGenerated: [],
   });
 
-  // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Responsive breakpoint for auto-collapse
   const isSmallScreen = useMediaQuery("(max-width: 600px)");
 
-  // Collapse sidebar on small screens
   useEffect(() => {
     setIsSidebarOpen(!isSmallScreen);
   }, [isSmallScreen]);
 
-  // Fetch user data and metrics
   const fetchUserData = async (uid) => {
     try {
-      const userDoc = await getDoc(doc(db, "users", uid)); // Replace 'users' with your Firestore collection name
+      const userDoc = await getDoc(doc(db, "users", uid));
       if (userDoc.exists()) {
         setUser(userDoc.data());
       }
-
-      // Fetch metrics (dummy data for now)
-      setMetrics({
-        users: 199,
-        sales: 475,
-        revenue: 5427,
-      });
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
   };
 
-  // Monitor authentication state
+  const fetchMetrics = (uid) => {
+    const metricsDocRef = doc(db, "metrics", uid);
+    onSnapshot(metricsDocRef, (doc) => {
+      if (doc.exists()) {
+        setMetrics(doc.data());
+      } else {
+        // Fallback to dummy data
+        setMetrics({
+          totalEarnings: 18250, // ₹
+          scrapTransformed: 37, // items
+          atmosphereSaved: 215, // kg
+          activeListings: 12,
+        });
+      }
+    });
+  };
+
+  const fetchTransactions = (uid) => {
+    const transactionsQuery = query(
+      collection(db, "transactions"),
+      where("userId", "==", uid),
+      where("status", "==", "completed")
+    );
+
+    onSnapshot(transactionsQuery, (snapshot) => {
+      if (snapshot.empty) {
+        // Fallback to dummy data
+        setTransactions([
+          { description: "Scrap Metal Sale", amount: 1200 },
+          { description: "Plastic Recycling", amount: 800 },
+        ]);
+      } else {
+        const transactionData = snapshot.docs.map((doc) => doc.data());
+        setTransactions(transactionData);
+      }
+    });
+  };
+
+  const fetchTransformations = (uid) => {
+    const transformationsQuery = query(
+      collection(db, "transformations"),
+      where("userId", "==", uid),
+      where("status", "!=", "completed")
+    );
+
+    onSnapshot(transformationsQuery, (snapshot) => {
+      if (snapshot.empty) {
+        // Fallback to dummy data
+        setTransformations([
+          { description: "Metal Art Sculpture", status: "In Progress" },
+          { description: "Wooden Furniture", status: "Pending" },
+        ]);
+      } else {
+        const transformationData = snapshot.docs.map((doc) => doc.data());
+        setTransformations(transformationData);
+      }
+    });
+  };
+
+  const fetchGraphData = (uid) => {
+    const graphDocRef = doc(db, "graphs", uid);
+    onSnapshot(graphDocRef, (doc) => {
+      if (doc.exists()) {
+        setGraphData(doc.data());
+      } else {
+        // Fallback to dummy data
+        setGraphData({
+          scrapSold: [50, 80, 120, 150, 200, 250],
+          revenueGenerated: [1000, 1500, 2000, 3000, 4000, 5000],
+        });
+      }
+    });
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        fetchUserData(currentUser.uid);
+        const uid = currentUser.uid;
+        fetchUserData(uid);
+        fetchMetrics(uid);
+        fetchTransactions(uid);
+        fetchTransformations(uid);
+        fetchGraphData(uid);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Chart data
-  const salesData = {
-    labels: ["Jan", "Feb", "Mar"],
-    datasets: [
-      {
-        label: "Sales",
-        data: [10, 20, 30],
-        backgroundColor: "#42A5F5",
+  const lineChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
       },
-    ],
+      title: {
+        display: true,
+        text: "Scrap Sold vs Revenue Generated",
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Months",
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Values",
+        },
+      },
+    },
   };
 
-  const revenueData = {
-    labels: ["Jan", "Feb", "Mar"],
+  const lineChartData = {
+    labels: ["January", "February", "March", "April", "May", "June"],
     datasets: [
       {
-        label: "Revenue",
-        data: [500, 700, 900],
+        label: "Scrap Sold (kg)",
+        data: graphData.scrapSold,
+        borderColor: "#42A5F5",
+        backgroundColor: "rgba(66, 165, 245, 0.2)",
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "Revenue Generated (₹)",
+        data: graphData.revenueGenerated,
         borderColor: "#66BB6A",
-        borderWidth: 2,
-        fill: false,
+        backgroundColor: "rgba(102, 187, 106, 0.2)",
+        tension: 0.4,
+        fill: true,
       },
     ],
   };
 
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 
       {/* Dashboard Content */}
-      <Box sx={{ flexGrow: 1, padding: "16px", overflowY: "auto" }}>
+      <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
         {/* Welcome Message */}
         <Typography
           variant="h4"
-          sx={{ marginBottom: "16px", fontFamily: "Arvo, serif", color: "#004080" }}
+          sx={{ marginBottom: "24px", fontFamily: "Arvo, serif", color: "#004080" }}
         >
           Welcome, {user?.name || "Seller"} to Seller Dashboard
         </Typography>
 
-        {/* Metrics Section */}
+        {/* Top Row: State Cards */}
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ backgroundColor: "#E3F2FD", borderRadius: "12px" }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#004080", fontFamily: "Roboto Slab, serif" }}>
-                  USERS
-                </Typography>
-                <Typography variant="h4" sx={{ color: "#004080" }}>
-                  {metrics.users}
-                </Typography>
-              </CardContent>
-            </Card>
+          {[
+            { label: "Total Scrap Sold", value: `₹${metrics.totalEarnings}`, icon: "💰", color: "#66BB6A" },
+            { label: "Items Transformed", value: metrics.scrapTransformed, icon: "♻️", color: "#29B6F6" },
+            { label: "Active Listings", value: metrics.activeListings, icon: "📋", color: "#FFCA28" },
+            { label: "Environmental Impact", value: `${metrics.atmosphereSaved} kg`, icon: "🌍", color: "#8E24AA" },
+          ].map((card, index) => (
+            <Grid item xs={12} sm={3} key={index}>
+              <motion.div
+                whileHover={{ scale: 1.05, boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)" }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card
+                  sx={{
+                    borderRadius: "12px",
+                    transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                    "&:hover": { boxShadow: "0px 15px 30px rgba(0, 0, 0, 0.3)" },
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                      <Typography variant="subtitle1" sx={{ color: card.color, marginRight: "12px" }}>
+                        {card.icon}
+                      </Typography>
+                      <Typography variant="subtitle1" sx={{ color: "#004080" }}>
+                        {card.label}
+                      </Typography>
+                    </Box>
+                    <Typography variant="h4" sx={{ color: "#004080", marginTop: "8px" }}>
+                      {card.value}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Middle Row: Recent Transactions & Ongoing Transformations */}
+        <Grid container spacing={3} sx={{ marginTop: "24px" }}>
+          <Grid item xs={12} md={6}>
+            <motion.div
+              whileHover={{ scale: 1.05, boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)" }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card
+                sx={{
+                  borderRadius: "12px",
+                  transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                  "&:hover": { boxShadow: "0px 15px 30px rgba(0, 0, 0, 0.3)" },
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" sx={{ color: "#004080", marginBottom: "16px" }}>
+                    Recent Transactions
+                  </Typography>
+                  {transactions.length > 0 ? (
+                    transactions.map((transaction, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">{transaction.description}</Typography>
+                        <Typography variant="body2" sx={{ color: "#66BB6A", fontWeight: "bold" }}>
+                          +₹{transaction.amount}
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">Scrap Metal Sale</Typography>
+                        <Typography variant="body2" sx={{ color: "#66BB6A", fontWeight: "bold" }}>
+                          +₹450
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">Paper Recycling</Typography>
+                        <Typography variant="body2" sx={{ color: "#66BB6A", fontWeight: "bold" }}>
+                          +₹280
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ backgroundColor: "#E3F2FD", borderRadius: "12px" }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#004080", fontFamily: "Roboto Slab, serif" }}>
-                  SALES
-                </Typography>
-                <Typography variant="h4" sx={{ color: "#004080" }}>
-                  {metrics.sales}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card sx={{ backgroundColor: "#E3F2FD", borderRadius: "12px" }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#004080", fontFamily: "Roboto Slab, serif" }}>
-                  REVENUE
-                </Typography>
-                <Typography variant="h4" sx={{ color: "#004080" }}>
-                  ${metrics.revenue}
-                </Typography>
-              </CardContent>
-            </Card>
+          <Grid item xs={12} md={6}>
+            <motion.div
+              whileHover={{ scale: 1.05, boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)" }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card
+                sx={{
+                  borderRadius: "12px",
+                  transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                  "&:hover": { boxShadow: "0px 15px 30px rgba(0, 0, 0, 0.3)" },
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" sx={{ color: "#004080", marginBottom: "16px" }}>
+                    Ongoing Transformations
+                  </Typography>
+                  {transformations.length > 0 ? (
+                    transformations.map((transformation, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">{transformation.description}</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: transformation.status === "In Progress" ? "#FFCA28" : "#66BB6A",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {transformation.status}
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">Metal Art Sculpture</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#FFCA28", fontWeight: "bold" }}
+                        >
+                          In Progress
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography variant="body1">Wooden Furniture</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#FFCA28", fontWeight: "bold" }}
+                        >
+                          Pending
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
           </Grid>
         </Grid>
 
-        {/* Charts Section */}
-        <Grid container spacing={3} sx={{ marginTop: "24px" }}>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: "12px" }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#004080", fontFamily: "Roboto Slab, serif" }}>
-                  Sales Performance
-                </Typography>
-                <Bar data={salesData} />
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: "12px" }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#004080", fontFamily: "Roboto Slab, serif" }}>
-                  Revenue Growth
-                </Typography>
-                <Line data={revenueData} />
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        {/* Bottom Row: Graph & Live Scrap Rates */}
+{/* Bottom Row: Graph & Live Scrap Rates */}
+<Grid container spacing={3} sx={{ marginTop: "24px" }}>
+  {/* Graph Block */}
+  <Grid item xs={12} md={8}> {/* Reduced width from 9 to 8 */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card
+        sx={{
+          borderRadius: "12px",
+          boxShadow: 2,
+          height: "500px",
+          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+          "&:hover": { boxShadow: "0px 15px 30px rgba(0, 0, 0, 0.3)" },
+        }}
+      >
+        <CardContent>
+          <Typography variant="h6" sx={{ color: "#004080", marginBottom: "16px" }}>
+            Scrap Sold vs Revenue Generated
+          </Typography>
+          <Box sx={{ height: "400px", width: "100%" }}>
+            <Line
+              data={lineChartData}
+              options={{
+                ...lineChartOptions,
+                maintainAspectRatio: false,
+              }}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+    </motion.div>
+  </Grid>
+
+  {/* Live Scrap Rates Table */}
+  <Grid item xs={12} md={4}> {/* Increased width from 3 to 4 */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card
+        sx={{
+          borderRadius: "12px",
+          boxShadow: 2,
+          height: "500px",
+          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+          "&:hover": { boxShadow: "0px 15px 30px rgba(0, 0, 0, 0.3)" },
+        }}
+      >
+        <CardContent>
+          <Typography variant="h6" sx={{ color: "#004080", marginBottom: "16px" }}>
+            Live Scrap Rates (₹ per kg)
+          </Typography>
+          <Box sx={{ maxHeight: "400px", overflowY: "auto" }}>
+            <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ borderBottom: "2px solid #ccc", paddingBottom: "8px" }}>Material</th>
+                  <th style={{ borderBottom: "2px solid #ccc", paddingBottom: "8px" }}>Price (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { material: "Iron Scrap", price: "45" },
+                  { material: "Aluminum Scrap", price: "150" },
+                  { material: "Copper Scrap", price: "750" },
+                  { material: "Brass Scrap", price: "540" },
+                  { material: "Plastic Scrap", price: "20" },
+                  { material: "Paper Scrap", price: "18" },
+                  { material: "Glass Scrap", price: "25" },
+                  { material: "Electronic Scrap", price: "120" },
+                  { material: "Rubber Scrap", price: "50" },
+                  { material: "Steel Scrap", price: "65" },
+                ].map((item, index) => (
+                  <tr key={index} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ padding: "8px" }}>{item.material}</td>
+                    <td style={{ padding: "8px", fontWeight: "bold" }}>₹{item.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </CardContent>
+      </Card>
+    </motion.div>
+  </Grid>
+</Grid>
+
       </Box>
     </Box>
   );
 };
 
 export default SellerDashboard;
+
+
+
+
+
