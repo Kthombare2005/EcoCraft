@@ -46,6 +46,72 @@
 
 
 
+// import { useEffect, useState } from "react";
+// import { Routes, Route, Navigate } from "react-router-dom"; // ✅ Remove extra Router import
+// import PropTypes from "prop-types";
+// import { auth, onAuthStateChanged } from "./firebaseConfig";
+
+// import AuthPage from "./components/auth/AuthPage";
+// import SellerDashboard from "./components/Dashboards/SellerDashboard/SellerDashboard";
+// import Profile from "./components/Dashboards/SellerDashboard/Profile";
+
+// const ProtectedRoute = ({ element }) => {
+//   const [user, setUser] = useState(null);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+//       setUser(currentUser);
+//       setLoading(false);
+//     });
+//     return () => unsubscribe();
+//   }, []);
+
+//   if (loading) return <div>Loading...</div>;
+
+//   return user ? element : <Navigate to="/" />;
+// };
+
+// // ✅ Fix: Add PropTypes validation for `element`
+// ProtectedRoute.propTypes = {
+//   element: PropTypes.element.isRequired,
+// };
+
+// const RedirectToDashboard = () => {
+//   const [user, setUser] = useState(null);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+//       setUser(currentUser);
+//       setLoading(false);
+//     });
+
+//     return () => unsubscribe();
+//   }, []);
+
+//   if (loading) return <div>Loading...</div>;
+
+//   return user ? <Navigate to="/dashboard/seller" /> : <Navigate to="/" />;
+// };
+
+// const App = () => {
+//   return (
+//     <Routes> {/* ✅ No Router here */}
+//       <Route path="/" element={<AuthPage />} />
+//       <Route path="/dashboard" element={<RedirectToDashboard />} />
+//       <Route path="/dashboard/seller" element={<ProtectedRoute element={<SellerDashboard />} />} />
+//       <Route path="/profile" element={<ProtectedRoute element={<Profile isSidebarCollapsed={false} />} />} />
+//       <Route path="*" element={<Navigate to="/" />} />
+//     </Routes>
+//   );
+// };
+
+// export default App;
+
+
+
+
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom"; // ✅ Remove extra Router import
 import PropTypes from "prop-types";
@@ -54,6 +120,7 @@ import { auth, onAuthStateChanged } from "./firebaseConfig";
 import AuthPage from "./components/auth/AuthPage";
 import SellerDashboard from "./components/Dashboards/SellerDashboard/SellerDashboard";
 import Profile from "./components/Dashboards/SellerDashboard/Profile";
+import ScrapManagement from "./components/Dashboards/SellerDashboard/ScrapManagement";
 
 const ProtectedRoute = ({ element }) => {
   const [user, setUser] = useState(null);
@@ -101,6 +168,10 @@ const App = () => {
       <Route path="/" element={<AuthPage />} />
       <Route path="/dashboard" element={<RedirectToDashboard />} />
       <Route path="/dashboard/seller" element={<ProtectedRoute element={<SellerDashboard />} />} />
+      <Route
+        path="/dashboard/seller/scrap-management"
+        element={<ProtectedRoute element={<ScrapManagement />} />}
+      />
       <Route path="/profile" element={<ProtectedRoute element={<Profile isSidebarCollapsed={false} />} />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

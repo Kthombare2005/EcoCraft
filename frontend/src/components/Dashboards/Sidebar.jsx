@@ -1,128 +1,49 @@
-// import PropTypes from "prop-types";
 // import { useState, useEffect } from "react";
-// import { Link, useLocation } from "react-router-dom";
-// import "./Sidebar.css";
-
-// const Sidebar = ({ onToggle }) => {
-//   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth <= 768);
-//   const location = useLocation();
-
-//   useEffect(() => {
-//     const handleResize = () => {
-//       setIsCollapsed(window.innerWidth <= 768);
-//     };
-
-//     window.addEventListener("resize", handleResize);
-//     return () => window.removeEventListener("resize", handleResize);
-//   }, []);
-
-//   const toggleSidebar = () => {
-//     setIsCollapsed((prevState) => {
-//       const newState = !prevState;
-//       onToggle(newState);
-//       return newState;
-//     });
-//   };
-
-//   return (
-//     <div className={`navigation ${isCollapsed ? "collapsed" : ""}`}>
-//       <ul>
-//         <li className="brand">
-//           {!isCollapsed && (
-//             <span className="title">
-//               Eco<span>Craft</span>
-//             </span>
-//           )}
-//         </li>
-//         <li className={location.pathname === "/dashboard/seller" ? "active" : ""}>
-//           <Link to="/dashboard/seller">
-//             <span className="icon">
-//               <ion-icon name="home-outline"></ion-icon>
-//             </span>
-//             {!isCollapsed && <span className="title">Home</span>}
-//           </Link>
-//         </li>
-//         <li className={location.pathname === "/profile" ? "active" : ""}>
-//           <Link to="/profile">
-//             <span className="icon">
-//               <ion-icon name="person-outline"></ion-icon>
-//             </span>
-//             {!isCollapsed && <span className="title">Profile</span>}
-//           </Link>
-//         </li>
-//         <li className="logout">
-//           <Link to="/logout">
-//             <span className="icon">
-//               <ion-icon name="log-out-outline"></ion-icon>
-//             </span>
-//             {!isCollapsed && <span className="title">Logout</span>}
-//           </Link>
-//         </li>
-//       </ul>
-//       <div className="toggle" onClick={toggleSidebar}>
-//         <ion-icon
-//           name={isCollapsed ? "chevron-forward-outline" : "chevron-back-outline"}
-//         ></ion-icon>
-//       </div>
-//     </div>
-//   );
-// };
-
-// Sidebar.propTypes = {
-//   onToggle: PropTypes.func.isRequired,
-// };
-
-// export default Sidebar;
-
-
-
-
-// import { useState, useEffect } from "react";
-// import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, IconButton, Typography, Box } from "@mui/material";
+// import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, IconButton, Typography, Box, useMediaQuery } from "@mui/material";
 // import { Home, Store, Build, AccountCircle, ExitToApp, Menu } from "@mui/icons-material";
 // import { useNavigate, useLocation } from "react-router-dom";
 // import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
 // import { doc, getDoc } from "firebase/firestore";
 
 // const Sidebar = () => {
-//   const [open, setOpen] = useState(true);
+//   const isSmallScreen = useMediaQuery("(max-width: 600px)");
+//   const [open, setOpen] = useState(!isSmallScreen);
 //   const [user, setUser] = useState(null);
 //   const navigate = useNavigate();
-//   const location = useLocation(); // Get the current route
+//   const location = useLocation();
 
-//   // Fetch user data from Firestore
 //   const fetchUserData = async (uid) => {
 //     try {
-//       const userDoc = await getDoc(doc(db, "users", uid)); // Replace 'users' with your Firestore collection name
+//       const userDoc = await getDoc(doc(db, "users", uid));
 //       if (userDoc.exists()) {
 //         setUser(userDoc.data());
-//       } else {
-//         console.error("User document does not exist");
 //       }
 //     } catch (error) {
 //       console.error("Error fetching user data:", error);
 //     }
 //   };
 
-//   // Monitor authentication state and fetch user data
 //   useEffect(() => {
 //     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
 //       if (currentUser) {
 //         fetchUserData(currentUser.uid);
 //       } else {
-//         setUser(null); // Clear user data if not logged in
+//         setUser(null);
 //       }
 //     });
 
 //     return () => unsubscribe();
 //   }, []);
 
+//   useEffect(() => {
+//     setOpen(!isSmallScreen);
+//   }, [isSmallScreen]);
+
 //   const handleLogout = async () => {
 //     await auth.signOut();
 //     navigate("/login");
 //   };
 
-//   // Define the menu items
 //   const menuItems = [
 //     { text: "Home", icon: <Home />, path: "/dashboard/seller" },
 //     { text: "Sell Scrap", icon: <Store />, path: "/sell-scrap" },
@@ -153,8 +74,6 @@
 //     >
 //       <style>
 //         {`
-//           @import url('https://fonts.googleapis.com/css2?family=Arvo:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Playwrite+VN:wght@100..400&family=Roboto+Slab:wght@100..900&display=swap');
-
 //           @keyframes gradientMove {
 //             0% { background-position: 0% 50%; }
 //             50% { background-position: 100% 50%; }
@@ -163,7 +82,6 @@
 //         `}
 //       </style>
 
-//       {/* Sidebar Header */}
 //       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px" }}>
 //         {open && (
 //           <Typography
@@ -171,7 +89,8 @@
 //             sx={{
 //               color: "#004080",
 //               fontFamily: "Arvo, serif",
-//               fontSize: "20px",
+//               fontSize: "24px",
+//               fontWeight: "bold",
 //               margin: 0,
 //             }}
 //           >
@@ -185,7 +104,6 @@
 
 //       <Divider sx={{ backgroundColor: "rgba(0, 64, 128, 0.2)" }} />
 
-//       {/* Sidebar Menu */}
 //       <List sx={{ flexGrow: 1 }}>
 //         {menuItems.map((item, index) => (
 //           <ListItem
@@ -194,8 +112,8 @@
 //             onClick={() => navigate(item.path)}
 //             sx={{
 //               "&:hover": { backgroundColor: "rgba(0, 64, 128, 0.1)" },
-//               backgroundColor: location.pathname === item.path ? "#42A5F5" : "transparent", // Highlight active item
-//               color: location.pathname === item.path ? "white" : "#004080", // Change text color for active item
+//               backgroundColor: location.pathname === item.path ? "#42A5F5" : "transparent",
+//               color: location.pathname === item.path ? "white" : "#004080",
 //               display: "flex",
 //               flexDirection: open ? "row" : "column",
 //               alignItems: "center",
@@ -206,7 +124,7 @@
 //           >
 //             <ListItemIcon
 //               sx={{
-//                 color: location.pathname === item.path ? "white" : "#004080", // Change icon color for active item
+//                 color: location.pathname === item.path ? "white" : "#004080",
 //                 minWidth: open ? "40px" : "100%",
 //                 display: "flex",
 //                 justifyContent: "center",
@@ -238,8 +156,7 @@
 //         ))}
 //       </List>
 
-//       {/* User Profile Section */}
-//       {user && (
+//       {user && open && (
 //         <Box sx={{ padding: "16px", textAlign: "center", fontFamily: "Roboto Slab, serif" }}>
 //           <Typography variant="subtitle1" sx={{ fontWeight: "bold", color: "#004080" }}>
 //             {user.name || "User"}
@@ -250,7 +167,6 @@
 //         </Box>
 //       )}
 
-//       {/* Logout Button */}
 //       <Box sx={{ padding: "16px" }}>
 //         <ListItem
 //           button
@@ -281,7 +197,6 @@
 // };
 
 // export default Sidebar;
-
 
 
 import { useState, useEffect } from "react";
@@ -332,7 +247,7 @@ const Sidebar = () => {
 
   const menuItems = [
     { text: "Home", icon: <Home />, path: "/dashboard/seller" },
-    { text: "Sell Scrap", icon: <Store />, path: "/sell-scrap" },
+    { text: "Sell Scrap", icon: <Store />, path: "/dashboard/seller/scrap-management" },
     { text: "Transform Scrap", icon: <Build />, path: "/transform-scrap" },
     { text: "Profile", icon: <AccountCircle />, path: "/profile" },
   ];
@@ -483,4 +398,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-
