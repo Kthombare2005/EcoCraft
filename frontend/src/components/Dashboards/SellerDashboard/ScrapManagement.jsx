@@ -1,350 +1,12 @@
-// import { useState, useEffect } from "react";
-// import {
-//   Card,
-//   CardContent,
-//   Typography,
-//   Grid,
-//   TextField,
-//   Button,
-//   MenuItem,
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableContainer,
-//   TableHead,
-//   TableRow,
-//   Paper,
-//   Box,
-// } from "@mui/material";
-// import AddCircleIcon from "@mui/icons-material/AddCircle";
-// import Sidebar from "../Sidebar";
-// import { db } from "../../../firebaseConfig";
-// import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
-// import { motion } from "framer-motion";
-
-// const ScrapManagement = () => {
-//   const [filters, setFilters] = useState({
-//     status: "",
-//     category: "",
-//     dateRange: "",
-//   });
-//   const [scrapListings, setScrapListings] = useState([]);
-//   const [transactions, setTransactions] = useState([]);
-//   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-//   const handleFilterChange = (e) => {
-//     const { name, value } = e.target;
-//     setFilters({ ...filters, [name]: value });
-//   };
-
-//   const fetchScrapListings = () => {
-//     const scrapQuery = query(collection(db, "scrapListings"));
-//     onSnapshot(scrapQuery, (snapshot) => {
-//       const listings = snapshot.docs.map((doc) => ({
-//         id: doc.id,
-//         ...doc.data(),
-//       }));
-//       setScrapListings(listings);
-//     });
-//   };
-
-//   const fetchTransactions = () => {
-//     const transactionsQuery = query(collection(db, "transactions"));
-//     onSnapshot(transactionsQuery, (snapshot) => {
-//       const transactionsData = snapshot.docs.map((doc) => ({
-//         id: doc.id,
-//         ...doc.data(),
-//       }));
-//       setTransactions(transactionsData);
-//     });
-//   };
-
-//   const handleAddNewScrap = async () => {
-//     try {
-//       await addDoc(collection(db, "scrapListings"), {
-//         type: "New Scrap",
-//         status: "Pending",
-//         listedOn: new Date().toLocaleDateString(),
-//         weight: "0 kg",
-//         category: "Misc",
-//         location: "Unknown",
-//         price: "₹0",
-//       });
-//     } catch (error) {
-//       console.error("Error adding new scrap:", error);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchScrapListings();
-//     fetchTransactions();
-//   }, []);
-
-//   return (
-//     // <Box sx={{ display: "flex", height: "100vh" }}>
-//     //   {/* Sidebar */}
-//     //   <Sidebar
-//     //     isOpen={isSidebarOpen}
-//     //     onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-//     //     activeMenuItem="Sell Scrap"
-//     //   />
-
-//     //   {/* Main Content */}
-//     //   <Box
-//     //     sx={{
-//     //       flexGrow: 1,
-//     //       padding: "24px",
-//     //       overflowY: "auto",
-//     //       backgroundColor: "#f8f9fa",
-//     //       transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
-//     //     }}
-//     //   >
-
-//     <Box
-//   sx={{
-//     display: "flex",
-//     height: "100vh",
-//     backgroundColor: "#f4f4f4", // Gray background for the page
-//   }}
-// >
-//   {/* Sidebar */}
-//   <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-//   {/* Main Content */}
-//   <Box
-//         sx={{
-//           flexGrow: 1,
-//           padding: "24px",
-//           overflowY: "auto",
-//           backgroundColor: "#f8f9fa",
-//           transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
-//         }}
-//       >
-// <Typography
-//   variant="h4"
-//   gutterBottom
-//   sx={{
-//     fontWeight: "bold",
-//     color: "#004080", // Match EcoCraft heading color
-//     fontFamily: "'Arvo', serif", // Apply font from imported Google Fonts
-//     marginBottom: "30px", // Add margin bottom
-//     transition: "color 0.3s ease", // Smooth hover effect
-//     "&:hover": {
-//       color: "green", // Change color to green on hover
-//     },
-//   }}
-// >
-//   Scrap Management
-// </Typography>
-
-
-
-//         {/* Filters */}
-//         <Grid container spacing={3} className="mb-6">
-//           <Grid item xs={12} sm={4}>
-//             <TextField
-//               fullWidth
-//               select
-//               label="Status"
-//               name="status"
-//               value={filters.status}
-//               onChange={handleFilterChange}
-//               variant="outlined"
-              
-//             >
-//               <MenuItem value="">All Status</MenuItem>
-//               <MenuItem value="Active">Active</MenuItem>
-//               <MenuItem value="Pending">Pending</MenuItem>
-//             </TextField>
-//           </Grid>
-//           <Grid item xs={12} sm={4}>
-//             <TextField
-//               fullWidth
-//               select
-//               label="Category"
-//               name="category"
-//               value={filters.category}
-//               onChange={handleFilterChange}
-//               variant="outlined"
-//             >
-//               <MenuItem value="">All Categories</MenuItem>
-//               <MenuItem value="Metal">Metal</MenuItem>
-//               <MenuItem value="Paper">Paper</MenuItem>
-//             </TextField>
-//           </Grid>
-//           <Grid item xs={12} sm={4}>
-//             <TextField
-//               fullWidth
-//               label="Date Range"
-//               name="dateRange"
-//               value={filters.dateRange}
-//               onChange={handleFilterChange}
-//               type="date"
-//               variant="outlined"
-//               InputLabelProps={{ shrink: true }}
-//             />
-//           </Grid>
-//         </Grid>
-
-//         {/* Scrap Listings */}
-//         <Grid container spacing={3} className="mb-6">
-//           {scrapListings.map((listing) => (
-//             <Grid item xs={12} sm={6} key={listing.id}>
-//               <motion.div
-//                 whileHover={{ scale: 1.05 }}
-//                 whileTap={{ scale: 0.95 }}
-//                 initial={{ opacity: 0, y: 20 }}
-//                 animate={{ opacity: 1, y: 0 }}
-//                 transition={{ duration: 0.5 }}
-//               >
-//                 <Card
-//                   sx={{
-//                     backgroundColor: "#fff",
-//                     borderRadius: "12px",
-//                     boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
-//                     transition: "all 0.3s ease",
-//                   }}
-//                 >
-//                   <CardContent>
-//                     <Typography
-//                       variant="h6"
-//                       gutterBottom
-//                       sx={{ fontWeight: "bold", color: "#333" }}
-//                     >
-//                       {listing.type}
-//                     </Typography>
-//                     <Typography variant="body2" color="textSecondary">
-//                       Listed on: {listing.listedOn}
-//                     </Typography>
-//                     <Typography variant="body2">
-//                       Weight: {listing.weight}
-//                     </Typography>
-//                     <Typography variant="body2">
-//                       Category: {listing.category}
-//                     </Typography>
-//                     <Typography variant="body2">
-//                       Location: {listing.location}
-//                     </Typography>
-//                     <Typography variant="h6" color="primary">
-//                       {listing.price}
-//                     </Typography>
-//                     <Button
-//                       size="small"
-//                       variant="outlined"
-//                       color="primary"
-//                       sx={{ mt: 1 }}
-//                     >
-//                       View Details
-//                     </Button>
-//                   </CardContent>
-//                 </Card>
-//               </motion.div>
-//             </Grid>
-//           ))}
-
-//           {/* Add New Scrap Card */}
-//           <Grid
-//             item
-//             xs={12}
-//             sm={6}
-//             className="flex justify-center items-center"
-//           >
-//             <motion.div
-//               whileHover={{ scale: 1.1 }}
-//               whileTap={{ scale: 0.9 }}
-//               initial={{ opacity: 0, y: 20 }}
-//               animate={{ opacity: 1, y: 0 }}
-//               transition={{ duration: 0.5 }}
-//               onClick={handleAddNewScrap}
-//             >
-//               <Card
-//                 sx={{
-//                   backgroundColor: "#e3f2fd",
-//                   borderRadius: "12px",
-//                   display: "flex",
-//                   flexDirection: "column",
-//                   alignItems: "center",
-//                   justifyContent: "center",
-//                   height: "200px",
-//                   boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
-//                   cursor: "pointer",
-//                   transition: "all 0.3s ease",
-//                 }}
-//               >
-//                 <CardContent className="text-center">
-//                   <AddCircleIcon color="primary" fontSize="large" />
-//                   <Typography variant="h6">List New Scrap</Typography>
-//                   <Typography variant="body2" color="textSecondary">
-//                     Click to add a new scrap listing
-//                   </Typography>
-//                 </CardContent>
-//               </Card>
-//             </motion.div>
-//           </Grid>
-//         </Grid>
-
-//         {/* Recent Transactions */}
-//         <Typography
-//           variant="h5"
-//           gutterBottom
-//           sx={{ fontWeight: "bold", color: "#333" }}
-//         >
-//           Recent Transactions
-//         </Typography>
-//         <TableContainer
-//           component={Paper}
-//           sx={{ borderRadius: "12px", overflow: "hidden" }}
-//         >
-//           <Table>
-//             <TableHead>
-//               <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-//                 <TableCell>Transaction ID</TableCell>
-//                 <TableCell>Item</TableCell>
-//                 <TableCell>Buyer</TableCell>
-//                 <TableCell>Amount</TableCell>
-//                 <TableCell>Status</TableCell>
-//                 <TableCell>Date</TableCell>
-//               </TableRow>
-//             </TableHead>
-//             <TableBody>
-//               {transactions.map((transaction) => (
-//                 <TableRow
-//                   key={transaction.id}
-//                   sx={{
-//                     "&:hover": {
-//                       backgroundColor: "#e3f2fd",
-//                       transition: "background-color 0.3s ease",
-//                     },
-//                   }}
-//                 >
-//                   <TableCell>{transaction.id}</TableCell>
-//                   <TableCell>{transaction.item}</TableCell>
-//                   <TableCell>{transaction.buyer}</TableCell>
-//                   <TableCell>{transaction.amount}</TableCell>
-//                   <TableCell>{transaction.status}</TableCell>
-//                   <TableCell>{transaction.date}</TableCell>
-//                 </TableRow>
-//               ))}
-//             </TableBody>
-//           </Table>
-//         </TableContainer>
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default ScrapManagement;
-
-
-
-
 import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   Typography,
   Grid,
+  TextField,
   Button,
+  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -354,15 +16,26 @@ import {
   Paper,
   Box,
 } from "@mui/material";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
 import Sidebar from "../Sidebar";
 import { db } from "../../../firebaseConfig";
 import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
 
 const ScrapManagement = () => {
+  const [filters, setFilters] = useState({
+    status: "",
+    category: "",
+    dateRange: "",
+  });
   const [scrapListings, setScrapListings] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters({ ...filters, [name]: value });
+  };
 
   const fetchScrapListings = () => {
     const scrapQuery = query(collection(db, "scrapListings"));
@@ -408,18 +81,37 @@ const ScrapManagement = () => {
   }, []);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        height: "100vh",
-        backgroundColor: "#f4f4f4", // Light gray background
-      }}
-    >
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+    // <Box sx={{ display: "flex", height: "100vh" }}>
+    //   {/* Sidebar */}
+    //   <Sidebar
+    //     isOpen={isSidebarOpen}
+    //     onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+    //     activeMenuItem="Sell Scrap"
+    //   />
 
-      {/* Main Content */}
-      <Box
+    //   {/* Main Content */}
+    //   <Box
+    //     sx={{
+    //       flexGrow: 1,
+    //       padding: "24px",
+    //       overflowY: "auto",
+    //       backgroundColor: "#f8f9fa",
+    //       transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
+    //     }}
+    //   >
+
+    <Box
+  sx={{
+    display: "flex",
+    height: "100vh",
+    backgroundColor: "#f4f4f4", // Gray background for the page
+  }}
+>
+  {/* Sidebar */}
+  <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+  {/* Main Content */}
+  <Box
         sx={{
           flexGrow: 1,
           padding: "24px",
@@ -428,52 +120,71 @@ const ScrapManagement = () => {
           transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
         }}
       >
-        {/* Header Section with Button */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          {/* Scrap Management Heading */}
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: "bold",
-              color: "#004080", // Match EcoCraft heading color
-              fontFamily: "'Arvo', serif",
-              transition: "color 0.3s ease",
-              "&:hover": {
-                color: "green",
-              },
-            }}
-          >
-            Scrap Management
-          </Typography>
+<Typography
+  variant="h4"
+  gutterBottom
+  sx={{
+    fontWeight: "bold",
+    color: "#004080", // Match EcoCraft heading color
+    fontFamily: "'Arvo', serif", // Apply font from imported Google Fonts
+    marginBottom: "30px", // Add margin bottom
+    transition: "color 0.3s ease", // Smooth hover effect
+    "&:hover": {
+      color: "green", // Change color to green on hover
+    },
+  }}
+>
+  Scrap Management
+</Typography>
 
-          {/* List New Scrap Button */}
-          <motion.button
-            whileHover={{ scale: 1.1, boxShadow: "0px 5px 15px rgba(0, 128, 0, 0.3)" }} // Hover animation
-            whileTap={{ scale: 0.95 }} // Click animation
-            onClick={handleAddNewScrap}
-            style={{
-              backgroundColor: "#42A5F5", // Primary blue color
-              color: "white",
-              padding: "10px 16px",
-              borderRadius: "8px",
-              border: "none",
-              fontSize: "16px",
-              fontFamily: "'Arvo', serif",
-              fontWeight: "bold",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-            }}
-          >
-            List New Scrap
-          </motion.button>
-        </Box>
+
+
+        {/* Filters */}
+        <Grid container spacing={3} className="mb-6">
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              select
+              label="Status"
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              variant="outlined"
+              
+            >
+              <MenuItem value="">All Status</MenuItem>
+              <MenuItem value="Active">Active</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              select
+              label="Category"
+              name="category"
+              value={filters.category}
+              onChange={handleFilterChange}
+              variant="outlined"
+            >
+              <MenuItem value="">All Categories</MenuItem>
+              <MenuItem value="Metal">Metal</MenuItem>
+              <MenuItem value="Paper">Paper</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="Date Range"
+              name="dateRange"
+              value={filters.dateRange}
+              onChange={handleFilterChange}
+              type="date"
+              variant="outlined"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+        </Grid>
 
         {/* Scrap Listings */}
         <Grid container spacing={3} className="mb-6">
@@ -530,6 +241,46 @@ const ScrapManagement = () => {
               </motion.div>
             </Grid>
           ))}
+
+          {/* Add New Scrap Card */}
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            className="flex justify-center items-center"
+          >
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              onClick={handleAddNewScrap}
+            >
+              <Card
+                sx={{
+                  backgroundColor: "#e3f2fd",
+                  borderRadius: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "200px",
+                  boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <CardContent className="text-center">
+                  <AddCircleIcon color="primary" fontSize="large" />
+                  <Typography variant="h6">List New Scrap</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Click to add a new scrap listing
+                  </Typography>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
         </Grid>
 
         {/* Recent Transactions */}
@@ -583,3 +334,83 @@ const ScrapManagement = () => {
 };
 
 export default ScrapManagement;
+
+
+
+// import { Box, Typography, Fab, Tooltip, useMediaQuery } from "@mui/material";
+// import Sidebar from "../Sidebar";
+// import AddCircleIcon from "@mui/icons-material/AddCircle";
+// import { motion } from "framer-motion";
+
+// const ScrapManagement = () => {
+//   const isSmallScreen = useMediaQuery("(max-width: 600px)");
+
+//   return (
+//     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
+//       {/* Sidebar */}
+//       <Sidebar />
+
+//       {/* Main Content */}
+//       <Box
+//         sx={{
+//           flexGrow: 1,
+//           padding: "24px",
+//           overflowY: "auto",
+//           backgroundColor: "#f8f9fa",
+//         }}
+//       >
+//         {/* Scrap Management Header */}
+//         <Typography
+//           variant="h4"
+//           gutterBottom
+//           sx={{
+//             fontWeight: "bold",
+//             color: "#004080",
+//             fontFamily: "'Arvo', serif",
+//             marginBottom: "20px",
+//             transition: "color 0.3s ease",
+//             "&:hover": {
+//               color: "green",
+//             },
+//           }}
+//         >
+//           Scrap Management
+//         </Typography>
+
+//         {/* FAB for List New Scrap */}
+//         <motion.div
+//           whileHover={{ scale: 1.1 }}
+//           whileTap={{ scale: 0.95 }}
+//           transition={{ duration: 0.3 }}
+//           style={{
+//             position: "fixed",
+//             bottom: "24px",
+//             right: "24px",
+//             zIndex: 1000,
+//             transformOrigin: "center",
+//           }}
+//         >
+//           <Tooltip title="List New Scrap" arrow>
+//             <Fab
+//               variant={isSmallScreen ? "circular" : "extended"}
+//               color="primary"
+//               sx={{
+//                 backgroundColor: "#4CAF50",
+//                 color: "white",
+//                 "&:hover": {
+//                   backgroundColor: "#388E3C",
+//                 },
+//               }}
+//               onClick={() => alert("List New Scrap clicked!")}
+//             >
+//               <AddCircleIcon sx={{ marginRight: isSmallScreen ? 0 : "8px" }} />
+//               {!isSmallScreen && "List New Scrap"}
+//             </Fab>
+//           </Tooltip>
+//         </motion.div>
+//       </Box>
+//     </Box>
+//   );
+// };
+
+// export default ScrapManagement;
