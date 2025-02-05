@@ -1,41 +1,145 @@
+// import { useState } from "react";
+// import { Box, Typography, Tooltip, useMediaQuery } from "@mui/material";
+// import AddCircleIcon from "@mui/icons-material/AddCircle";
+// import Sidebar from "../Sidebar";
+// import { motion } from "framer-motion";
+
+// const ScrapManagement = () => {
+//   const isSmallScreen = useMediaQuery("(max-width: 600px)");
+//   const [expanded, setExpanded] = useState(false);
+
+//   const handleAddScrap = () => {
+//     if (isSmallScreen && !expanded) {
+//       setExpanded(true); // First click expands the button
+//     } else {
+//       alert("List New Scrap button clicked!"); // Second click performs the action
+//       setExpanded(false); // Reset expansion after action
+//     }
+//   };
+
+//   return (
+//     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
+//       {/* Sidebar */}
+//       <Sidebar isOpen />
+
+//       {/* Main Content */}
+//       <Box
+//         sx={{
+//           flexGrow: 1,
+//           padding: "24px",
+//           backgroundColor: "#f8f9fa",
+//           position: "relative",
+//           overflowY: "auto",
+//         }}
+//       >
+//         <Typography
+//           variant="h4"
+//           sx={{
+//             fontWeight: "bold",
+//             color: "#004080",
+//             fontFamily: "'Arvo', serif",
+//             marginBottom: "20px",
+//           }}
+//         >
+//           Scrap Management
+//         </Typography>
+
+//         {/* Floating Button with Continuous Zoom Animation */}
+//         <Tooltip title="List New Scrap" arrow>
+//           <motion.div
+//             animate={{
+//               scale: [1, 1.15, 1], // Creates continuous zoom in & out effect
+//               boxShadow: ["0px 5px 15px rgba(0,0,0,0.2)", "0px 10px 25px rgba(0,128,0,0.5)", "0px 5px 15px rgba(0,0,0,0.2)"],
+//             }}
+//             transition={{
+//               duration: 1.5, // Duration of each cycle
+//               repeat: Infinity, // Infinite loop for continuous animation
+//               ease: "easeInOut",
+//             }}
+//             style={{
+//               position: "fixed",
+//               bottom: "20px",
+//               right: "20px",
+//               zIndex: 1000,
+//             }}
+//           >
+//             <motion.button
+//               onClick={handleAddScrap}
+//               style={{
+//                 display: "flex",
+//                 alignItems: "center",
+//                 justifyContent: "center",
+//                 gap: expanded || !isSmallScreen ? "8px" : "4px",
+//                 backgroundColor: "#28a745",
+//                 color: "white",
+//                 fontWeight: "bold",
+//                 borderRadius: "25px",
+//                 padding: expanded || !isSmallScreen ? "12px 24px" : "12px",
+//                 width: expanded || !isSmallScreen ? "auto" : "50px",
+//                 transition: "all 0.3s ease-in-out",
+//                 boxShadow: "0px 5px 15px rgba(0,0,0,0.2)",
+//                 fontSize: expanded || !isSmallScreen ? "16px" : "12px",
+//                 border: "none",
+//                 cursor: "pointer",
+//                 outline: "none",
+//               }}
+//               whileTap={{
+//                 scale: 0.9,
+//                 boxShadow: "0px 5px 10px rgba(0, 128, 0, 0.3)",
+//               }}
+//             >
+//               <AddCircleIcon fontSize={expanded || !isSmallScreen ? "medium" : "small"} />
+//               {(expanded || !isSmallScreen) && "List New Scrap"}
+//             </motion.button>
+//           </motion.div>
+//         </Tooltip>
+//       </Box>
+//     </Box>
+//   );
+// };
+
+// export default ScrapManagement;
+
+
+
+
 import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   Typography,
   Grid,
-  TextField,
   Button,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Box,
+  Fab,
 } from "@mui/material";
-import AddCircleIcon from "@mui/icons-material/AddCircle";
+import AddIcon from "@mui/icons-material/Add";
 import Sidebar from "../Sidebar";
-import { db } from "../../../firebaseConfig";
-import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
+import { db, auth } from "../../../firebaseConfig";
+import { collection, addDoc, onSnapshot, query, doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 const ScrapManagement = () => {
-  const [filters, setFilters] = useState({
-    status: "",
-    category: "",
-    dateRange: "",
-  });
   const [scrapListings, setScrapListings] = useState([]);
-  const [transactions, setTransactions] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 600);
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters({ ...filters, [name]: value });
-  };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    contactNumber: "",
+    city: "",
+    state: "",
+    scrapType: "",
+    weight: "",
+    price: "",
+  });
 
   const fetchScrapListings = () => {
     const scrapQuery = query(collection(db, "scrapListings"));
@@ -48,146 +152,100 @@ const ScrapManagement = () => {
     });
   };
 
-  const fetchTransactions = () => {
-    const transactionsQuery = query(collection(db, "transactions"));
-    onSnapshot(transactionsQuery, (snapshot) => {
-      const transactionsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTransactions(transactionsData);
-    });
-  };
-
-  const handleAddNewScrap = async () => {
+  const fetchUserData = async (uid) => {
     try {
-      await addDoc(collection(db, "scrapListings"), {
-        type: "New Scrap",
-        status: "Pending",
-        listedOn: new Date().toLocaleDateString(),
-        weight: "0 kg",
-        category: "Misc",
-        location: "Unknown",
-        price: "₹0",
-      });
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const { name, ContactNumber } = userDoc.data();
+        setFormData((prev) => ({
+          ...prev,
+          name: name || "",
+          contactNumber: ContactNumber || "",
+        }));
+      }
     } catch (error) {
-      console.error("Error adding new scrap:", error);
+      console.error("Error fetching user data:", error);
     }
   };
 
   useEffect(() => {
     fetchScrapListings();
-    fetchTransactions();
+
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < 600);
+    };
+    window.addEventListener("resize", handleResize);
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        fetchUserData(currentUser.uid);
+      }
+    });
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      unsubscribeAuth();
+    };
   }, []);
 
+  const handleDialogOpen = () => {
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setFormData((prev) => ({
+      ...prev,
+      city: "",
+      state: "",
+      scrapType: "",
+      weight: "",
+      price: "",
+    }));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFormSubmit = async () => {
+    try {
+      await addDoc(collection(db, "scrapListings"), formData);
+      handleDialogClose();
+    } catch (error) {
+      console.error("Error adding scrap listing:", error);
+    }
+  };
+
   return (
-    // <Box sx={{ display: "flex", height: "100vh" }}>
-    //   {/* Sidebar */}
-    //   <Sidebar
-    //     isOpen={isSidebarOpen}
-    //     onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-    //     activeMenuItem="Sell Scrap"
-    //   />
+    <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
+      {/* Sidebar */}
+      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} activeMenuItem="Sell Scrap" />
 
-    //   {/* Main Content */}
-    //   <Box
-    //     sx={{
-    //       flexGrow: 1,
-    //       padding: "24px",
-    //       overflowY: "auto",
-    //       backgroundColor: "#f8f9fa",
-    //       transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
-    //     }}
-    //   >
-
-    <Box
-  sx={{
-    display: "flex",
-    height: "100vh",
-    backgroundColor: "#f4f4f4", // Gray background for the page
-  }}
->
-  {/* Sidebar */}
-  <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-  {/* Main Content */}
-  <Box
+      {/* Main Content */}
+      <Box
         sx={{
           flexGrow: 1,
           padding: "24px",
+          transition: "margin-left 0.3s ease",
           overflowY: "auto",
-          backgroundColor: "#f8f9fa",
-          transition: "margin-left 0.3s ease", // Smooth transition for sidebar toggle
         }}
       >
-<Typography
-  variant="h4"
-  gutterBottom
-  sx={{
-    fontWeight: "bold",
-    color: "#004080", // Match EcoCraft heading color
-    fontFamily: "'Arvo', serif", // Apply font from imported Google Fonts
-    marginBottom: "30px", // Add margin bottom
-    transition: "color 0.3s ease", // Smooth hover effect
-    "&:hover": {
-      color: "green", // Change color to green on hover
-    },
-  }}
->
-  Scrap Management
-</Typography>
-
-
-
-        {/* Filters */}
-        <Grid container spacing={3} className="mb-6">
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              select
-              label="Status"
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              variant="outlined"
-              
-            >
-              <MenuItem value="">All Status</MenuItem>
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Pending">Pending</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              select
-              label="Category"
-              name="category"
-              value={filters.category}
-              onChange={handleFilterChange}
-              variant="outlined"
-            >
-              <MenuItem value="">All Categories</MenuItem>
-              <MenuItem value="Metal">Metal</MenuItem>
-              <MenuItem value="Paper">Paper</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Date Range"
-              name="dateRange"
-              value={filters.dateRange}
-              onChange={handleFilterChange}
-              type="date"
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-        </Grid>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: "bold",
+            color: "#004080",
+            fontFamily: "'Arvo', serif",
+            marginBottom: "20px",
+          }}
+        >
+          Scrap Management
+        </Typography>
 
         {/* Scrap Listings */}
-        <Grid container spacing={3} className="mb-6">
+        <Grid container spacing={3}>
           {scrapListings.map((listing) => (
             <Grid item xs={12} sm={6} key={listing.id}>
               <motion.div
@@ -197,137 +255,101 @@ const ScrapManagement = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Card
-                  sx={{
-                    backgroundColor: "#fff",
-                    borderRadius: "12px",
-                    boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
-                    transition: "all 0.3s ease",
-                  }}
-                >
+                <Card sx={{ backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0px 5px 15px rgba(0,0,0,0.1)" }}>
                   <CardContent>
-                    <Typography
-                      variant="h6"
-                      gutterBottom
-                      sx={{ fontWeight: "bold", color: "#333" }}
-                    >
-                      {listing.type}
+                    <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333" }}>
+                      {listing.scrapType}
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
-                      Listed on: {listing.listedOn}
+                      Location: {listing.city}, {listing.state}
                     </Typography>
-                    <Typography variant="body2">
-                      Weight: {listing.weight}
-                    </Typography>
-                    <Typography variant="body2">
-                      Category: {listing.category}
-                    </Typography>
-                    <Typography variant="body2">
-                      Location: {listing.location}
-                    </Typography>
-                    <Typography variant="h6" color="primary">
-                      {listing.price}
-                    </Typography>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="primary"
-                      sx={{ mt: 1 }}
-                    >
-                      View Details
-                    </Button>
+                    <Typography variant="body2">Weight: {listing.weight}</Typography>
+                    <Typography variant="body2">Expected Price: {listing.price}</Typography>
                   </CardContent>
                 </Card>
               </motion.div>
             </Grid>
           ))}
-
-          {/* Add New Scrap Card */}
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            className="flex justify-center items-center"
-          >
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              onClick={handleAddNewScrap}
-            >
-              <Card
-                sx={{
-                  backgroundColor: "#e3f2fd",
-                  borderRadius: "12px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "200px",
-                  boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                <CardContent className="text-center">
-                  <AddCircleIcon color="primary" fontSize="large" />
-                  <Typography variant="h6">List New Scrap</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Click to add a new scrap listing
-                  </Typography>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </Grid>
         </Grid>
 
-        {/* Recent Transactions */}
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ fontWeight: "bold", color: "#333" }}
+        {/* Floating Button */}
+        <Fab
+          color="success"
+          variant={isSmallScreen ? "circular" : "extended"}
+          sx={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            zIndex: 1000,
+            fontWeight: "bold",
+            boxShadow: "0px 5px 15px rgba(0,0,0,0.3)",
+            "&:hover": {
+              transform: "scale(1.1)",
+              boxShadow: "0px 10px 20px rgba(0,0,0,0.4)",
+            },
+            animation: "zoomInOut 2s infinite",
+          }}
+          onClick={handleDialogOpen}
         >
-          Recent Transactions
-        </Typography>
-        <TableContainer
-          component={Paper}
-          sx={{ borderRadius: "12px", overflow: "hidden" }}
-        >
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                <TableCell>Transaction ID</TableCell>
-                <TableCell>Item</TableCell>
-                <TableCell>Buyer</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Date</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow
-                  key={transaction.id}
-                  sx={{
-                    "&:hover": {
-                      backgroundColor: "#e3f2fd",
-                      transition: "background-color 0.3s ease",
-                    },
-                  }}
-                >
-                  <TableCell>{transaction.id}</TableCell>
-                  <TableCell>{transaction.item}</TableCell>
-                  <TableCell>{transaction.buyer}</TableCell>
-                  <TableCell>{transaction.amount}</TableCell>
-                  <TableCell>{transaction.status}</TableCell>
-                  <TableCell>{transaction.date}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+          <AddIcon />
+          {!isSmallScreen && " List New Scrap"}
+        </Fab>
+        <style>
+          {`
+            @keyframes zoomInOut {
+              0%, 100% {
+                transform: scale(1);
+              }
+              50% {
+                transform: scale(1.1);
+              }
+            }
+          `}
+        </style>
+
+        {/* Add Scrap Dialog */}
+        <Dialog open={dialogOpen} onClose={handleDialogClose}style={{height: '90%'}}>
+          <DialogTitle>Add Scrap Listing</DialogTitle>
+          <DialogContent>
+  <Grid container spacing={2}>
+    {[
+      { label: "Name", name: "name", type: "text", disabled: true,},
+      { label: "Contact Number", name: "contactNumber", type: "text", disabled: true },
+      { label: "City", name: "city", type: "text" },
+      { label: "State", name: "state", type: "text" },
+      { label: "Scrap Type", name: "scrapType", type: "text" },
+      { label: "Approx Weight", name: "weight", type: "text" },
+      { label: "Expected Price", name: "price", type: "text" },
+    ].map((field, index) => (
+      <Grid item xs={12} key={index}>
+        <TextField
+          fullWidth
+          label={field.label}
+          name={field.name}
+          value={formData[field.name]}
+          onChange={handleInputChange}
+          type={field.type}
+          variant="outlined"
+          disabled={field.disabled}
+          InputLabelProps={{
+            style: { top: '2px' }, // Adjusts the label position
+          }}
+          sx={{ mt: 1 }} // Adds margin-top to separate fields
+        />
+      </Grid>
+    ))}
+  </Grid>
+</DialogContent>
+
+          <DialogActions>
+            <Button onClick={handleDialogClose} color="error" variant="outlined">
+              Cancel
+            </Button>
+            <Button onClick={handleFormSubmit} color="success" variant="contained">
+              Add Scrap
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Box>
   );
@@ -335,82 +357,3 @@ const ScrapManagement = () => {
 
 export default ScrapManagement;
 
-
-
-// import { Box, Typography, Fab, Tooltip, useMediaQuery } from "@mui/material";
-// import Sidebar from "../Sidebar";
-// import AddCircleIcon from "@mui/icons-material/AddCircle";
-// import { motion } from "framer-motion";
-
-// const ScrapManagement = () => {
-//   const isSmallScreen = useMediaQuery("(max-width: 600px)");
-
-//   return (
-//     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
-//       {/* Sidebar */}
-//       <Sidebar />
-
-//       {/* Main Content */}
-//       <Box
-//         sx={{
-//           flexGrow: 1,
-//           padding: "24px",
-//           overflowY: "auto",
-//           backgroundColor: "#f8f9fa",
-//         }}
-//       >
-//         {/* Scrap Management Header */}
-//         <Typography
-//           variant="h4"
-//           gutterBottom
-//           sx={{
-//             fontWeight: "bold",
-//             color: "#004080",
-//             fontFamily: "'Arvo', serif",
-//             marginBottom: "20px",
-//             transition: "color 0.3s ease",
-//             "&:hover": {
-//               color: "green",
-//             },
-//           }}
-//         >
-//           Scrap Management
-//         </Typography>
-
-//         {/* FAB for List New Scrap */}
-//         <motion.div
-//           whileHover={{ scale: 1.1 }}
-//           whileTap={{ scale: 0.95 }}
-//           transition={{ duration: 0.3 }}
-//           style={{
-//             position: "fixed",
-//             bottom: "24px",
-//             right: "24px",
-//             zIndex: 1000,
-//             transformOrigin: "center",
-//           }}
-//         >
-//           <Tooltip title="List New Scrap" arrow>
-//             <Fab
-//               variant={isSmallScreen ? "circular" : "extended"}
-//               color="primary"
-//               sx={{
-//                 backgroundColor: "#4CAF50",
-//                 color: "white",
-//                 "&:hover": {
-//                   backgroundColor: "#388E3C",
-//                 },
-//               }}
-//               onClick={() => alert("List New Scrap clicked!")}
-//             >
-//               <AddCircleIcon sx={{ marginRight: isSmallScreen ? 0 : "8px" }} />
-//               {!isSmallScreen && "List New Scrap"}
-//             </Fab>
-//           </Tooltip>
-//         </motion.div>
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default ScrapManagement;
