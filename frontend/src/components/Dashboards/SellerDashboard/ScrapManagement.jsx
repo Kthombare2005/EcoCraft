@@ -324,6 +324,22 @@ const ScrapManagement = () => {
         />
       </Grid>
       <Grid item xs={12}>
+  <TextField
+    fullWidth
+    label="Scrap Name"
+    name="scrapName"
+    value={formData.scrapName}
+    onChange={handleInputChange}
+    variant="outlined"
+    sx={{
+      "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#004080",
+      },
+    }}
+  />
+</Grid>
+
+      <Grid item xs={12}>
         <TextField
           fullWidth
           label="Address"
