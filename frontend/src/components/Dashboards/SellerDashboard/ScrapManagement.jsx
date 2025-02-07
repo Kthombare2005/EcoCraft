@@ -15,10 +15,17 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import Sidebar from "../Sidebar";
 import { db, auth } from "../../../firebaseConfig";
-import { collection, addDoc, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import statesJson from "../../../assets/states.json";
 import citiesJson from "../../../assets/cities.json";
+import { Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { serverTimestamp } from "firebase/firestore";
+// import { findNearestScrapersWithGamini } from "../../../utils/firestoreUtils";
+import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
+import LoadingSpinner from "../../../components/LoadingSpinner";
+
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -30,6 +37,51 @@ const ScrapManagement = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cities, setCities] = useState([]);
   const [validationError, setValidationError] = useState("");
+  const [scrapListings, setScrapListings] = useState([]);
+  const [selectedScrap, setSelectedScrap] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [nearbyScrapers, setNearbyScrapers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+
+  const handleOpenDialog = async (scrap) => {
+    setSelectedScrap(scrap);
+    setOpenDialog(true);
+    setLoading(true); // Show loading spinner
+
+    if (scrap.city && scrap.state) {
+      try {
+        const rankedScrapers = await findNearestScrapersWithGamini(
+          scrap.city,
+          scrap.state
+        );
+        setNearbyScrapers(rankedScrapers);
+      } catch (error) {
+        console.error("Error finding nearest scrapers:", error);
+        setNearbyScrapers([]);
+      } finally {
+        setLoading(false); // Hide loading spinner
+      }
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedScrap(null);
+  };
+
+  const fetchScrapListings = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "scrapListings"));
+      const listings = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setScrapListings(listings);
+    } catch (error) {
+      console.error("Error fetching scrap listings:", error);
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,6 +123,7 @@ const ScrapManagement = () => {
         fetchUserData(currentUser.uid);
       }
     });
+    fetchScrapListings();
 
     return () => {
       window.removeEventListener("resize", handleResize);
@@ -242,8 +295,12 @@ const ScrapManagement = () => {
       return;
     }
     try {
-      await addDoc(collection(db, "scrapListings"), formData);
+      await addDoc(collection(db, "scrapListings"), {
+        ...formData,
+        createdOn: serverTimestamp(), // Auto-generate the timestamp
+      });
       handleDialogClose();
+      fetchScrapListings(); // Refresh the list after adding new scrap
       alert("Scrap listing added successfully!");
     } catch (error) {
       console.error("Error adding scrap listing:", error);
@@ -269,7 +326,209 @@ const ScrapManagement = () => {
         >
           Scrap Management
         </Typography>
-        
+
+        <Accordion defaultExpanded>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            sx={{ backgroundColor: "#e3f2fd" }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "#004080",
+                fontFamily: "'Arvo', serif",
+              }}
+            >
+              View Enlisted Scraps
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <div className="container mt-3">
+              <div className="row">
+                {scrapListings.length > 0 ? (
+                  scrapListings.map((scrap) => (
+                    <div
+                      className="col-12 col-sm-6 col-md-4 mb-4"
+                      key={scrap.id}
+                    >
+                      <div
+                        className="card"
+                        style={{
+                          borderRadius: "12px",
+                          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                          overflow: "hidden",
+                          border: "none",
+                        }}
+                      >
+                        {/* Top Section for Image or Scrap Type */}
+                        <div
+                          style={{
+                            height: "200px", // Increased height for the image area
+                            backgroundColor: "#f0f0f0",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {scrap.image ? (
+                            <img
+                              src={scrap.image}
+                              alt={scrap.scrapName}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                borderRadius: "8px 8px 0 0",
+                              }}
+                            />
+                          ) : (
+                            <h3 style={{ fontWeight: "bold", color: "#999" }}>
+                              {scrap.scrapType || "Scrap"}
+                            </h3>
+                          )}
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="card-body" style={{ padding: "20px" }}>
+                          <h5
+                            style={{
+                              fontWeight: "bold",
+                              marginBottom: "10px",
+                              color: "#333",
+                            }}
+                          >
+                            {scrap.scrapName || "Scrap Item"}
+                          </h5>
+                          <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                            Listed on:{" "}
+                            {scrap.createdOn && scrap.createdOn.toDate
+                              ? scrap.createdOn.toDate().toLocaleDateString()
+                              : "Unknown Date"}
+                            <br />
+                            <strong>Weight:</strong>{" "}
+                            {scrap.weight
+                              ? `${scrap.weight} ${scrap.unit}`
+                              : "N/A"}{" "}
+                            <br />
+                            <strong>Category:</strong>{" "}
+                            {scrap.scrapType || "N/A"} <br />
+                            <strong>Location:</strong> {scrap.city || "N/A"},{" "}
+                            {scrap.state || "N/A"}
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <h6
+                              style={{
+                                fontWeight: "bold",
+                                color: "#28a745",
+                                marginBottom: "0",
+                              }}
+                            >
+                              ₹{scrap.price || "N/A"}
+                            </h6>
+                            <a
+                              href="#"
+                              className="btn"
+                              style={{
+                                color: "#007bff",
+                                textDecoration: "none",
+                                fontWeight: "bold",
+                              }}
+                              onClick={() => handleOpenDialog(scrap)}
+                            >
+                              View Details →
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      textAlign: "center",
+                      color: "gray",
+                      fontStyle: "italic",
+                      margin: "20px auto",
+                    }}
+                  >
+                    No scraps listed yet.
+                  </Typography>
+                )}
+              </div>
+            </div>
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Scrap Details Dialog */}
+        <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth>
+  {selectedScrap && (
+    <>
+      <DialogTitle sx={{ fontWeight: "bold", textAlign: "center" }}>
+        Scrap Details
+      </DialogTitle>
+      <DialogContent>
+        {loading ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            <Typography variant="h6">Scrap Name: {selectedScrap.scrapName}</Typography>
+            <Typography>Type: {selectedScrap.scrapType}</Typography>
+            <Typography>Weight: {selectedScrap.weight} {selectedScrap.unit}</Typography>
+            <Typography>Price: ₹{selectedScrap.price}</Typography>
+            <Typography>Location: {selectedScrap.city}, {selectedScrap.state}</Typography>
+            <Typography>Contact: {selectedScrap.contactNumber}</Typography>
+            <Typography>Address: {selectedScrap.address}</Typography>
+
+            {/* Nearby Scrapers */}
+            <Typography variant="h6" sx={{ marginTop: "20px", fontWeight: "bold" }}>
+              Nearby Scrap Dealers (Within 4-5 km):
+            </Typography>
+            {nearbyScrapers.length > 0 ? (
+              nearbyScrapers.map((scraper, index) => (
+                <Box
+                  key={index}
+                  sx={{ padding: "10px", border: "1px solid #ccc", marginBottom: "10px" }}
+                >
+                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                    {scraper.name}
+                  </Typography>
+                  <Typography>📍 {scraper.shop_address}</Typography>
+                  <Typography>📞 {scraper.contact_number || "Contact Not Available"}</Typography>
+                  {scraper.contact_number && (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      href={`tel:${scraper.contact_number}`}
+                      sx={{ marginTop: "5px" }}
+                    >
+                      Call Now
+                    </Button>
+                  )}
+                </Box>
+              ))
+            ) : (
+              <Typography sx={{ color: "gray", fontStyle: "italic" }}>No nearby scrapers found.</Typography>
+            )}
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseDialog} color="primary" variant="contained">
+          Close
+        </Button>
+      </DialogActions>
+    </>
+  )}
+</Dialog>
+
 
         <Fab
           color="success"
@@ -534,6 +793,3 @@ const ScrapManagement = () => {
 };
 
 export default ScrapManagement;
-
-
-
