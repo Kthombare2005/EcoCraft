@@ -1,36 +1,49 @@
+
+import PropTypes from "prop-types";
 import { motion } from "framer-motion";
+import "./loader.css"; // For Animate.css if needed
 
-const LoadingSpinner = () => (
-  <motion.div
-    initial={{ scale: 0.5 }}
-    animate={{ scale: 1 }}
-    exit={{ scale: 0 }}
-    transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
-    className="animate__animated animate__fadeIn"
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      height: "100%",
-    }}
-  >
-    <div
-      style={{
-        width: "60px",
-        height: "60px",
-        border: "6px solid #ddd",
-        borderTop: "6px solid #318CE7",
-        borderRadius: "50%",
-        animation: "spin 1s linear infinite",
-      }}
-    ></div>
-    <style>{`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}</style>
-  </motion.div>
-);
+const Loader = ({ type = "framer" }) => {
+  if (type === "framer") {
+    return (
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.5, opacity: 0 }}
+        transition={{
+          duration: 0.5,
+          repeat: Infinity,
+          repeatType: "reverse",
+        }}
+        style={{
+          width: "50px",
+          height: "50px",
+          background: "#318CE7",
+          borderRadius: "50%",
+          margin: "auto",
+        }}
+      ></motion.div>
+    );
+  } else {
+    return (
+      <div className="animate__animated animate__bounce animate__infinite">
+        <div
+          style={{
+            width: "50px",
+            height: "50px",
+            background: "#318CE7",
+            borderRadius: "50%",
+            margin: "auto",
+          }}
+        ></div>
+      </div>
+    );
+  }
+};
 
-export default LoadingSpinner;
+// Add PropTypes for validation
+Loader.propTypes = {
+  type: PropTypes.string,
+};
+
+export default Loader;

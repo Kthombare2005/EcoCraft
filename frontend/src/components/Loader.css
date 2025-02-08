@@ -1,0 +1,23 @@
+/* loader.css */
+@keyframes rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .animate__bounce {
+    animation: bounce 1s infinite;
+  }
+  
+  .loader {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #318CE7;
+    border-top: 5px solid transparent;
+    border-radius: 50%;
+    animation: rotate 1s linear infinite;
+  }
+  
