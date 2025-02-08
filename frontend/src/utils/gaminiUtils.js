@@ -59,7 +59,7 @@ export const findNearestScrapersWithGamini = async (city, state) => {
   const dynamicPrompt = `
     Find only active scrap dealers in or near ${city}, ${state}, who **BUY** scrap materials from sellers.
     Exclude dealers who sell scrap or do not purchase scrap from individuals.
-    Ensure the selected scrap dealers are within 4-5 km or reachable in 15-20 minutes.
+    Ensure the selected scrap dealers are within 2-3 km or reachable in 10-15 minutes.
     
     Provide the result in JSON format:
     [

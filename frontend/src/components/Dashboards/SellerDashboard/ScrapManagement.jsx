@@ -25,7 +25,7 @@ import { serverTimestamp } from "firebase/firestore";
 // import { findNearestScrapersWithGamini } from "../../../utils/firestoreUtils";
 import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
 import LoadingSpinner from "../../../components/LoadingSpinner";
-
+import axios from "axios";
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -42,7 +42,94 @@ const ScrapManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [nearbyScrapers, setNearbyScrapers] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+  // const [addressError, setAddressError] = useState("");
+
+  const validateAddress = async (address, city, state) => {
+    const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M"; // Replace with your actual API key
+    const fullAddress = `${address}, ${city}, ${state}`;
+
+    try {
+      console.log("Validating full address:", fullAddress);
+
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json`,
+        {
+          params: {
+            address: fullAddress,
+            key: API_KEY,
+          },
+        }
+      );
+
+      console.log("Maps API Response:", response.data);
+
+      const results = response.data.results;
+
+      if (results.length > 0) {
+        // Loop through all results to find an exact match
+        for (let result of results) {
+          const { formatted_address } = result;
+
+          // Check if the formatted address contains the input address, city, and state
+          const isAddressValid =
+            formatted_address.toLowerCase().includes(address.toLowerCase()) &&
+            formatted_address.toLowerCase().includes(city.toLowerCase()) &&
+            formatted_address.toLowerCase().includes(state.toLowerCase());
+
+          if (isAddressValid) {
+            console.log("Valid address found:", formatted_address);
+            return true;
+          }
+        }
+      }
+
+      console.warn("No valid address found matching the entered details.");
+      return false; // Address not valid
+    } catch (error) {
+      console.error("Error validating address:", error);
+      return false;
+    }
+  };
+
+  const handleFormSubmit = async () => {
+    if (!formData.image) {
+      alert("Please upload an image.");
+      return;
+    }
+
+    setLoading(true); // Show spinner or loader
+    setValidationError(""); // Clear previous errors
+
+    try {
+      const isAddressValid = await validateAddress(
+        formData.address,
+        formData.city,
+        formData.state
+      );
+
+      if (!isAddressValid) {
+        setLoading(false); // Hide spinner
+        alert(
+          "The entered address does not match the selected city and state."
+        );
+        return;
+      }
+
+      // Proceed with form submission
+      await addDoc(collection(db, "scrapListings"), {
+        ...formData,
+        createdOn: serverTimestamp(),
+      });
+
+      handleDialogClose();
+      fetchScrapListings(); // Refresh the scrap listing
+      alert("Scrap listing added successfully!");
+    } catch (error) {
+      console.error("Error adding scrap listing:", error);
+    } finally {
+      setLoading(false); // Hide spinner
+    }
+  };
 
   const handleOpenDialog = async (scrap) => {
     setSelectedScrap(scrap);
@@ -157,6 +244,7 @@ const ScrapManagement = () => {
       name: formData.name,
       contactNumber: formData.contactNumber,
       address: "",
+      pinCode: "",
       city: "",
       state: "",
       scrapType: "",
@@ -167,6 +255,13 @@ const ScrapManagement = () => {
     });
     setValidationError("");
   };
+
+  // const handlePinCodeChange = (e) => {
+  //   const value = e.target.value;
+  //   if (/^\d{0,6}$/.test(value)) {
+  //     setFormData((prev) => ({ ...prev, pinCode: value }));
+  //   }
+  // };
 
   const handleStateChange = (e) => {
     const selectedState = e.target.value;
@@ -286,24 +381,6 @@ const ScrapManagement = () => {
       };
 
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFormSubmit = async () => {
-    if (!formData.image) {
-      alert("Please upload an image.");
-      return;
-    }
-    try {
-      await addDoc(collection(db, "scrapListings"), {
-        ...formData,
-        createdOn: serverTimestamp(), // Auto-generate the timestamp
-      });
-      handleDialogClose();
-      fetchScrapListings(); // Refresh the list after adding new scrap
-      alert("Scrap listing added successfully!");
-    } catch (error) {
-      console.error("Error adding scrap listing:", error);
     }
   };
 
@@ -469,66 +546,92 @@ const ScrapManagement = () => {
 
         {/* Scrap Details Dialog */}
         <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth>
-  {selectedScrap && (
-    <>
-      <DialogTitle sx={{ fontWeight: "bold", textAlign: "center" }}>
-        Scrap Details
-      </DialogTitle>
-      <DialogContent>
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <>
-            <Typography variant="h6">Scrap Name: {selectedScrap.scrapName}</Typography>
-            <Typography>Type: {selectedScrap.scrapType}</Typography>
-            <Typography>Weight: {selectedScrap.weight} {selectedScrap.unit}</Typography>
-            <Typography>Price: ₹{selectedScrap.price}</Typography>
-            <Typography>Location: {selectedScrap.city}, {selectedScrap.state}</Typography>
-            <Typography>Contact: {selectedScrap.contactNumber}</Typography>
-            <Typography>Address: {selectedScrap.address}</Typography>
+          {selectedScrap && (
+            <>
+              <DialogTitle sx={{ fontWeight: "bold", textAlign: "center" }}>
+                Scrap Details
+              </DialogTitle>
+              <DialogContent>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : (
+                  <>
+                    <Typography variant="h6">
+                      Scrap Name: {selectedScrap.scrapName}
+                    </Typography>
+                    <Typography>Type: {selectedScrap.scrapType}</Typography>
+                    <Typography>
+                      Weight: {selectedScrap.weight} {selectedScrap.unit}
+                    </Typography>
+                    <Typography>Price: ₹{selectedScrap.price}</Typography>
+                    <Typography>
+                      Location: {selectedScrap.city}, {selectedScrap.state}
+                    </Typography>
+                    <Typography>
+                      Contact: {selectedScrap.contactNumber}
+                    </Typography>
+                    <Typography>Address: {selectedScrap.address}</Typography>
 
-            {/* Nearby Scrapers */}
-            <Typography variant="h6" sx={{ marginTop: "20px", fontWeight: "bold" }}>
-              Nearby Scrap Dealers (Within 4-5 km):
-            </Typography>
-            {nearbyScrapers.length > 0 ? (
-              nearbyScrapers.map((scraper, index) => (
-                <Box
-                  key={index}
-                  sx={{ padding: "10px", border: "1px solid #ccc", marginBottom: "10px" }}
-                >
-                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                    {scraper.name}
-                  </Typography>
-                  <Typography>📍 {scraper.shop_address}</Typography>
-                  <Typography>📞 {scraper.contact_number || "Contact Not Available"}</Typography>
-                  {scraper.contact_number && (
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      href={`tel:${scraper.contact_number}`}
-                      sx={{ marginTop: "5px" }}
+                    {/* Nearby Scrapers */}
+                    <Typography
+                      variant="h6"
+                      sx={{ marginTop: "20px", fontWeight: "bold" }}
                     >
-                      Call Now
-                    </Button>
-                  )}
-                </Box>
-              ))
-            ) : (
-              <Typography sx={{ color: "gray", fontStyle: "italic" }}>No nearby scrapers found.</Typography>
-            )}
-          </>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCloseDialog} color="primary" variant="contained">
-          Close
-        </Button>
-      </DialogActions>
-    </>
-  )}
-</Dialog>
-
+                      Nearby Scrap Dealers (Within 4-5 km):
+                    </Typography>
+                    {nearbyScrapers.length > 0 ? (
+                      nearbyScrapers.map((scraper, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            padding: "10px",
+                            border: "1px solid #ccc",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {scraper.name}
+                          </Typography>
+                          <Typography>📍 {scraper.shop_address}</Typography>
+                          <Typography>
+                            📞{" "}
+                            {scraper.contact_number || "Contact Not Available"}
+                          </Typography>
+                          {scraper.contact_number && (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              href={`tel:${scraper.contact_number}`}
+                              sx={{ marginTop: "5px" }}
+                            >
+                              Call Now
+                            </Button>
+                          )}
+                        </Box>
+                      ))
+                    ) : (
+                      <Typography sx={{ color: "gray", fontStyle: "italic" }}>
+                        No nearby scrapers found.
+                      </Typography>
+                    )}
+                  </>
+                )}
+              </DialogContent>
+              <DialogActions>
+                <Button
+                  onClick={handleCloseDialog}
+                  color="primary"
+                  variant="contained"
+                >
+                  Close
+                </Button>
+              </DialogActions>
+            </>
+          )}
+        </Dialog>
 
         <Fab
           color="success"
@@ -621,16 +724,41 @@ const ScrapManagement = () => {
                 />
               </Grid>
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  variant="outlined"
-                />
+              <Grid
+                container
+                spacing={2}
+                sx={{ marginTop: "5px", marginLeft: "1px" }}
+              >
+                <Grid item xs={12} sm={8}>
+                  <TextField
+                    fullWidth
+                    label="Address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    variant="outlined"
+                    error={!!validationError} // Show error if validationError is set
+                    helperText={validationError} // Display error message
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="Pin Code"
+                    name="pinCode"
+                    value={formData.pinCode}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (/^\d{0,5}$/.test(value)) {
+                        setFormData((prev) => ({ ...prev, pinCode: value }));
+                      }
+                    }}
+                    inputProps={{ maxLength: 6 }}
+                    variant="outlined"
+                  />
+                </Grid>
               </Grid>
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
