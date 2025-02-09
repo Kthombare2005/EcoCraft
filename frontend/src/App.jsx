@@ -113,12 +113,13 @@
 
 
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom"; // ✅ Remove extra Router import
+import { Routes, Route, Navigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { auth, onAuthStateChanged } from "./firebaseConfig";
 
 import AuthPage from "./components/auth/AuthPage";
 import SellerDashboard from "./components/Dashboards/SellerDashboard/SellerDashboard";
+import ScraperDashboard from "./components/Dashboards/ScraperDashboard/ScraperDashboard"; // ✅ Import Scraper Dashboard
 import Profile from "./components/Dashboards/SellerDashboard/Profile";
 import ScrapManagement from "./components/Dashboards/SellerDashboard/ScrapManagement";
 
@@ -164,15 +165,21 @@ const RedirectToDashboard = () => {
 
 const App = () => {
   return (
-    <Routes> {/* ✅ No Router here */}
+    <Routes>
       <Route path="/" element={<AuthPage />} />
       <Route path="/dashboard" element={<RedirectToDashboard />} />
+
+      {/* ✅ Seller Routes */}
       <Route path="/dashboard/seller" element={<ProtectedRoute element={<SellerDashboard />} />} />
       <Route
         path="/dashboard/seller/scrap-management"
         element={<ProtectedRoute element={<ScrapManagement />} />}
       />
       <Route path="/profile" element={<ProtectedRoute element={<Profile isSidebarCollapsed={false} />} />} />
+
+      {/* ✅ Scraper Dashboard Route */}
+      <Route path="/dashboard/scraper" element={<ProtectedRoute element={<ScraperDashboard />} />} />
+
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

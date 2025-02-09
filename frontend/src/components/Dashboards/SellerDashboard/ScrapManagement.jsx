@@ -1030,6 +1030,8 @@ import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // C
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import axios from "axios";
 import { Snackbar, Alert } from "@mui/material";
+import { query, where } from "firebase/firestore";
+import { Autocomplete } from "@mui/material";
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1054,8 +1056,9 @@ const ScrapManagement = () => {
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   // const [successSnackbarOpen, setSuccessSnackbarOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState(""); // State to store success messages
-  const [loadingMessage, setLoadingMessage] = useState(""); // Add this line to your state declarations
-
+  // const [loadingMessage, setLoadingMessage] = useState(""); // Add this line to your state declarations
+  const [formErrors, setFormErrors] = useState({});
+  const [submissionLoading, setSubmissionLoading] = useState(false);
 
   const validateAddress = async (address, city, state) => {
     const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M";
@@ -1117,75 +1120,97 @@ const ScrapManagement = () => {
     }
   };
 
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.scrapName) errors.scrapName = "Scrap name is required.";
+    if (!formData.address) errors.address = "Address is required.";
+    if (!formData.pinCode) errors.pinCode = "Pin code is required.";
+    if (!formData.state) errors.state = "State is required.";
+    if (!formData.city) errors.city = "City is required.";
+    if (!formData.scrapType) errors.scrapType = "Scrap type is required.";
+    if (!formData.weight) errors.weight = "Weight is required.";
+    if (!formData.unit) errors.unit = "Weight unit is required.";
+    if (!formData.image) errors.image = "Please upload an image.";
+
+    setFormErrors(errors); // Update the error state
+    return Object.keys(errors).length === 0; // Return true if no errors
+  };
+
   const handleFormSubmit = async () => {
-    // Validate if all fields are filled
-    if (
-      !formData.scrapName ||
-      !formData.address ||
-      !formData.pinCode ||
-      !formData.state ||
-      !formData.city ||
-      !formData.scrapType ||
-      !formData.weight ||
-      !formData.unit ||
-      !formData.image
-    ) {
-      setValidationError("❌ All fields are necessary. Please fill out all fields.");
-      setTimeout(() => setValidationError(""), 3000); // Remove message after 3 seconds
+    if (!validateForm()) {
+      setValidationError(
+        "❌ All fields are necessary. Please fill out all fields."
+      );
       return;
     }
-  
-    setLoading(true); // Show overall loader
-    setValidationError(""); // Clear any previous validation errors
-  
+
+    setLoading(true); // Show loader for the entire submission process
+    setValidationError(""); // Clear previous errors
+
     try {
-      setAddressValidationLoading(true); // Show address validation loader
+      // Address validation
       const isAddressValid = await validateAddress(
         formData.address,
         formData.city,
         formData.state
       );
-      setAddressValidationLoading(false); // Hide address validation loader
-  
+
       if (!isAddressValid) {
-        setValidationError("❌ The entered address does not match the selected city and state.");
-        setLoading(false); // Stop loading spinner
-        setTimeout(() => setValidationError(""), 3000); // Remove message after 3 seconds
+        setFormErrors((prev) => ({
+          ...prev,
+          address:
+            "The entered address does not match the selected city and state.",
+        }));
+        setLoading(false);
         return;
       }
-  
-      // Add a loading spinner between address validation and scrap listing
-      setLoadingMessage("Listing your scrap...");
+
+      // Add a loader for the transition from address validation to scrap submission
+      setSubmissionLoading(true);
+
+      // Simulate a delay for better UX (optional)
       setTimeout(async () => {
         try {
+          const user = auth.currentUser;
+          if (!user) {
+            setLoading(false);
+            setSubmissionLoading(false);
+            setValidationError("❌ You must be logged in to list scrap.");
+            return;
+          }
+
           await addDoc(collection(db, "scrapListings"), {
             ...formData,
+            userId: user.uid,
             createdOn: serverTimestamp(),
           });
-          setLoadingMessage(""); // Clear the loading message
+
           setSuccessMessage("✅ Scrap added successfully!");
+          setSubmissionLoading(false); // Stop transition loader
+
+          // Close the dialog and reset after 3 seconds
           setTimeout(() => {
-            setSuccessMessage(""); // Remove success message after 3 seconds
-            handleDialogClose(); // Close dialog after success message
+            setSuccessMessage("");
+            handleDialogClose();
           }, 3000);
-          fetchScrapListings(); // Refresh the listings
+
+          fetchScrapListings(user.uid); // Fetch updated listings
         } catch (error) {
           console.error("Error adding scrap listing:", error);
           setValidationError("❌ Failed to add scrap. Please try again.");
-          setTimeout(() => setValidationError(""), 3000); // Remove error after 3 seconds
+          setSubmissionLoading(false);
         } finally {
-          setLoading(false); // Stop overall loader
+          setLoading(false);
         }
-      }, 3000); // Delay of 3 seconds for the spinner
+      }, 2000); // Simulate a small delay (2 seconds) for transition
     } catch (error) {
-      console.error("Error during address validation:", error);
-      setValidationError("❌ An error occurred during validation.");
-      setTimeout(() => setValidationError(""), 3000); // Remove error after 3 seconds
-      setLoading(false); // Stop overall loader
+      console.error("Error during form submission:", error);
+      setValidationError("❌ An error occurred during the process.");
+      setSubmissionLoading(false);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  
 
   const handleOpenDialog = async (scrap) => {
     setSelectedScrap(scrap);
@@ -1213,14 +1238,22 @@ const ScrapManagement = () => {
     setSelectedScrap(null);
   };
 
-  const fetchScrapListings = async () => {
+  const fetchScrapListings = async (userId) => {
     try {
-      const querySnapshot = await getDocs(collection(db, "scrapListings"));
+      // Query Firestore for scraps added by the logged-in user
+      const q = query(
+        collection(db, "scrapListings"),
+        where("userId", "==", userId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      // Map the query results to an array
       const listings = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setScrapListings(listings);
+
+      setScrapListings(listings); // Update state with the fetched listings
     } catch (error) {
       console.error("Error fetching scrap listings:", error);
     }
@@ -1263,9 +1296,11 @@ const ScrapManagement = () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         fetchUserData(currentUser.uid);
+        fetchScrapListings(currentUser.uid); // Fetch only the logged-in user's scraps
+      } else {
+        setScrapListings([]); // Clear listings if no user is logged in
       }
     });
-    fetchScrapListings();
 
     return () => {
       window.removeEventListener("resize", handleResize);
@@ -1317,11 +1352,11 @@ const ScrapManagement = () => {
   //   }
   // };
 
-  const handleStateChange = (e) => {
-    const selectedState = e.target.value;
-    setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
-    setCities(citiesJson[selectedState] || []);
-  };
+  // const handleStateChange = (e) => {
+  //   const selectedState = e.target.value;
+  //   setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
+  //   setCities(citiesJson[selectedState] || []);
+  // };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1765,6 +1800,36 @@ const ScrapManagement = () => {
           <DialogContent>
             <Grid container spacing={2} sx={{ marginTop: "5px" }}>
               {/* Name Field */}
+              {submissionLoading && (
+                <Box
+                  sx={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    backgroundColor: "rgba(255, 255, 255, 0.8)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    flexDirection: "column",
+                    zIndex: 2000,
+                  }}
+                >
+                  <LoadingSpinner />
+                  <Typography
+                    sx={{
+                      color: "#333",
+                      fontWeight: "bold",
+                      fontSize: "1.2rem",
+                      marginTop: "16px",
+                    }}
+                  >
+                    Completing Scrap Listing...
+                  </Typography>
+                </Box>
+              )}
+
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -1809,8 +1874,8 @@ const ScrapManagement = () => {
                   value={formData.scrapName}
                   onChange={handleInputChange}
                   variant="outlined"
-                  error={!!validationError.scrapName}
-                  helperText={validationError.scrapName}
+                  error={!!formErrors.scrapName}
+                  helperText={formErrors.scrapName}
                   sx={{
                     "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
                       {
@@ -1834,8 +1899,8 @@ const ScrapManagement = () => {
                     value={formData.address}
                     onChange={handleInputChange}
                     variant="outlined"
-                    error={!!validationError.address}
-                    helperText={validationError.address}
+                    error={!!formErrors.address}
+                    helperText={formErrors.address}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -1852,70 +1917,61 @@ const ScrapManagement = () => {
                     }}
                     inputProps={{ maxLength: 6 }}
                     variant="outlined"
-                    error={!!validationError.pinCode}
-                    helperText={validationError.pinCode}
+                    error={!!formErrors.pinCode}
+                    helperText={formErrors.pinCode}
                   />
                 </Grid>
               </Grid>
 
-              {/* Address Validation Feedback */}
-              {addressValidationLoading && (
-  <Box
-    sx={{ textAlign: "center", marginTop: "16px", width: "100%" }}
-  >
-    <LoadingSpinner />
-    <Typography
-      sx={{
-        color: "gray",
-        fontStyle: "italic",
-        marginTop: "8px",
-      }}
-    >
-      Validating address with Google Maps API...
-    </Typography>
-  </Box>
-)}
-
-
               {/* State and City Fields */}
+              {/* State Selection with Search Feature */}
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="State"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleStateChange}
-                  select
-                  variant="outlined"
-                  error={!!validationError.state}
-                  helperText={validationError.state}
-                >
-                  {statesJson.states.map((state) => (
-                    <MenuItem key={state} value={state}>
-                      {state}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  options={statesJson.states} // State list from JSON
+                  getOptionLabel={(option) => option} // Display option as label
+                  value={formData.state || null}
+                  onChange={(event, newValue) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      state: newValue,
+                      city: "",
+                    })); // Reset city when state changes
+                    setCities(citiesJson[newValue] || []); // Update city options based on selected state
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="State"
+                      variant="outlined"
+                      fullWidth
+                      error={!!formErrors.state}
+                      helperText={formErrors.state}
+                    />
+                  )}
+                />
               </Grid>
+
+              {/* City Selection with Search Feature */}
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  select
-                  variant="outlined"
-                  disabled={!formData.state}
-                  error={!!validationError.city}
-                  helperText={validationError.city}
-                >
-                  {cities.map((city) => (
-                    <MenuItem key={city} value={city}>
-                      {city}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  options={cities} // City list based on selected state
+                  getOptionLabel={(option) => option} // Display option as label
+                  value={formData.city || null}
+                  onChange={(event, newValue) => {
+                    setFormData((prev) => ({ ...prev, city: newValue }));
+                  }}
+                  disabled={!formData.state} // Disable city selection until a state is selected
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="City"
+                      variant="outlined"
+                      fullWidth
+                      error={!!formErrors.city}
+                      helperText={formErrors.city}
+                    />
+                  )}
+                />
               </Grid>
 
               {/* Scrap Type Field */}
@@ -1928,8 +1984,8 @@ const ScrapManagement = () => {
                   onChange={handleInputChange}
                   select
                   variant="outlined"
-                  error={!!validationError.scrapType}
-                  helperText={validationError.scrapType}
+                  error={!!formErrors.scrapType}
+                  helperText={formErrors.scrapType}
                 >
                   {scrapTypes.map((type) => (
                     <MenuItem key={type} value={type}>
@@ -1948,8 +2004,8 @@ const ScrapManagement = () => {
                   value={formData.weight}
                   onChange={handleInputChange}
                   variant="outlined"
-                  error={!!validationError.weight}
-                  helperText={validationError.weight}
+                  error={!!formErrors.weight}
+                  helperText={formErrors.weight}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1961,8 +2017,8 @@ const ScrapManagement = () => {
                   onChange={handleInputChange}
                   select
                   variant="outlined"
-                  error={!!validationError.unit}
-                  helperText={validationError.unit}
+                  error={!!formErrors.unit}
+                  helperText={formErrors.unit}
                 >
                   {weightUnits.map((unit) => (
                     <MenuItem key={unit} value={unit}>
@@ -1974,6 +2030,7 @@ const ScrapManagement = () => {
 
               {/* Image Upload and Validation */}
               <Grid item xs={12}>
+                {/* Image Upload Button */}
                 <Button
                   variant="contained"
                   component="label"
@@ -1994,7 +2051,9 @@ const ScrapManagement = () => {
                   Upload Image
                   <input type="file" hidden onChange={handleFileChange} />
                 </Button>
-                {validationError.image && (
+
+                {/* Image Field Validation Error */}
+                {formErrors.image && (
                   <Typography
                     sx={{
                       color: "red",
@@ -2003,23 +2062,42 @@ const ScrapManagement = () => {
                       textAlign: "center",
                     }}
                   >
-                    {validationError.image}
+                    {formErrors.image}
                   </Typography>
                 )}
+
+                {/* Show Image Validation Loader (Full-Screen) */}
                 {imageValidationLoading && (
-                  <Box sx={{ textAlign: "center", marginTop: "16px" }}>
+                  <Box
+                    sx={{
+                      position: "fixed",
+                      top: 0,
+                      left: 0,
+                      width: "100vw",
+                      height: "100vh",
+                      backgroundColor: "rgba(255, 255, 255, 0.8)",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      flexDirection: "column",
+                      zIndex: 2000,
+                    }}
+                  >
                     <LoadingSpinner />
                     <Typography
                       sx={{
-                        color: "gray",
-                        fontStyle: "italic",
-                        marginTop: "8px",
+                        color: "#333",
+                        fontWeight: "bold",
+                        fontSize: "1.2rem",
+                        marginTop: "16px",
                       }}
                     >
-                      Validating image...
+                      Validating Image...
                     </Typography>
                   </Box>
                 )}
+
+                {/* Show Image Validation Success/Failure Message */}
                 {!imageValidationLoading && validationMessage && (
                   <Box sx={{ marginTop: "16px", textAlign: "center" }}>
                     <Typography
@@ -2036,17 +2114,56 @@ const ScrapManagement = () => {
                     </Typography>
                   </Box>
                 )}
+
+                {/* Show Image Preview After Validation */}
                 {!imageValidationLoading && formData.image && (
                   <Box sx={{ marginTop: "16px", textAlign: "center" }}>
                     <Typography>Image Preview:</Typography>
                     <img
                       src={formData.image}
                       alt="Preview"
-                      style={{ maxWidth: "100%", maxHeight: "200px" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "200px",
+                        borderRadius: "8px",
+                      }}
                     />
                   </Box>
                 )}
               </Grid>
+
+              {/* Show Address Validation Loader (Full-Screen) */}
+              {addressValidationLoading && (
+                <Box
+                  sx={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    backgroundColor: "rgba(255, 255, 255, 0.8)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    flexDirection: "column",
+                    zIndex: 2000,
+                  }}
+                >
+                  <LoadingSpinner />
+                  <Typography
+                    sx={{
+                      color: "#333",
+                      fontWeight: "bold",
+                      fontSize: "1.2rem",
+                      marginTop: "16px",
+                    }}
+                  >
+                    Validating Address...
+                  </Typography>
+                </Box>
+              )}
+
+              {/* General Validation Error */}
               {validationError && (
                 <Box sx={{ textAlign: "center", marginBottom: "16px" }}>
                   <Typography
@@ -2063,6 +2180,7 @@ const ScrapManagement = () => {
               )}
             </Grid>
           </DialogContent>
+
           <DialogActions
             sx={{
               justifyContent: "space-between",
