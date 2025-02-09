@@ -1026,12 +1026,14 @@ import { Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { serverTimestamp } from "firebase/firestore";
 // import { findNearestScrapersWithGamini } from "../../../utils/firestoreUtils";
-import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
+// import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import axios from "axios";
 import { Snackbar, Alert } from "@mui/material";
 import { query, where } from "firebase/firestore";
 import { Autocomplete } from "@mui/material";
+import { findScrapersFromGoogleMaps } from "../../../utils/googleMapsUtils";
+// import {findScrapersFromGoogleMaps} from "../../../utils/gaminiUtils"
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1215,21 +1217,29 @@ const ScrapManagement = () => {
   const handleOpenDialog = async (scrap) => {
     setSelectedScrap(scrap);
     setOpenDialog(true);
-    setLoading(true); // Show loading spinner
-
-    if (scrap.city && scrap.state) {
-      try {
-        const rankedScrapers = await findNearestScrapersWithGamini(
-          scrap.city,
-          scrap.state
-        );
-        setNearbyScrapers(rankedScrapers);
-      } catch (error) {
-        console.error("Error finding nearest scrapers:", error);
-        setNearbyScrapers([]);
-      } finally {
-        setLoading(false); // Hide loading spinner
+    setLoading(true); // Show full-screen loader
+  
+    try {
+      // 🔹 Extract User's Pin Code & Address
+      const { pinCode, address, city, state } = scrap;
+  
+      if (!pinCode && (!address || !city || !state)) {
+        console.error("❌ Insufficient details for finding nearby scrapers.");
+        alert("⚠️ Please provide either a pin code or a complete address.");
+        setLoading(false);
+        return;
       }
+  
+      // 🔹 Fetch Nearby Scrapers Using Google Maps
+      const scrapers = await findScrapersFromGoogleMaps(pinCode, address, city, state);
+  
+      // 🔹 Update State with Scrapers
+      setNearbyScrapers(scrapers);
+    } catch (error) {
+      console.error("❌ Error finding scrapers:", error);
+      setNearbyScrapers([]);
+    } finally {
+      setLoading(false); // Hide loading spinner
     }
   };
 
@@ -1680,75 +1690,120 @@ const ScrapManagement = () => {
                   <LoadingSpinner />
                 ) : (
                   <>
-                    <Typography variant="h6">
-                      Scrap Name: {selectedScrap.scrapName}
-                    </Typography>
-                    <Typography>Type: {selectedScrap.scrapType}</Typography>
-                    <Typography>
-                      Weight: {selectedScrap.weight} {selectedScrap.unit}
-                    </Typography>
-                    <Typography>Price: ₹{selectedScrap.price}</Typography>
-                    <Typography>
-                      Location: {selectedScrap.city}, {selectedScrap.state}
-                    </Typography>
-                    <Typography>
-                      Contact: {selectedScrap.contactNumber}
-                    </Typography>
-                    <Typography>Address: {selectedScrap.address}</Typography>
-
-                    {/* Nearby Scrapers */}
-                    <Typography
-                      variant="h6"
-                      sx={{ marginTop: "20px", fontWeight: "bold" }}
+                    {/* Scrap Details */}
+                    <Box
+                      sx={{
+                        padding: "12px",
+                        backgroundColor: "#f9f9f9",
+                        borderRadius: "8px",
+                      }}
                     >
-                      Nearby Scrap Dealers (Within 4-5 km):
-                    </Typography>
-                    {nearbyScrapers.length > 0 ? (
-                      nearbyScrapers.map((scraper, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            padding: "10px",
-                            border: "1px solid #ccc",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: "bold" }}
-                          >
-                            {scraper.name}
-                          </Typography>
-                          <Typography>📍 {scraper.shop_address}</Typography>
-                          <Typography>
-                            📞{" "}
-                            {scraper.contact_number || "Contact Not Available"}
-                          </Typography>
-                          {scraper.contact_number && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              href={`tel:${scraper.contact_number}`}
-                              sx={{ marginTop: "5px" }}
-                            >
-                              Call Now
-                            </Button>
-                          )}
-                        </Box>
-                      ))
-                    ) : (
-                      <Typography sx={{ color: "gray", fontStyle: "italic" }}>
-                        No nearby scrapers found.
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: "bold", color: "#004080" }}
+                      >
+                        {selectedScrap.scrapName}
                       </Typography>
-                    )}
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        📌 <strong>Type:</strong> {selectedScrap.scrapType}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        ⚖️ <strong>Weight:</strong> {selectedScrap.weight}{" "}
+                        {selectedScrap.unit}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        💰 <strong>Price:</strong> ₹{selectedScrap.price}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        📍 <strong>Location:</strong> {selectedScrap.city},{" "}
+                        {selectedScrap.state}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        📞 <strong>Contact:</strong>{" "}
+                        {selectedScrap.contactNumber}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
+                        🏠 <strong>Address:</strong> {selectedScrap.address}
+                      </Typography>
+                    </Box>
+
+                    {/* 🔹 Nearby Scrapers Section */}
+                    {/* Nearby Scrapers */}
+                    {/* Nearby Scrapers */}
+<Typography
+  variant="h6"
+  sx={{ marginTop: "20px", fontWeight: "bold", color: "#004080" }}
+>
+  Nearby Scrap Dealers (Top 5):
+</Typography>
+
+{nearbyScrapers.length > 0 ? (
+  nearbyScrapers.slice(0, 5).map((scraper, index) => (
+    <Box
+      key={index}
+      sx={{
+        padding: "12px",
+        marginTop: "10px",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        backgroundColor: "#f4f4f4",
+        transition: "0.3s",
+        "&:hover": { boxShadow: "0px 4px 8px rgba(0,0,0,0.2)" },
+      }}
+    >
+      <Typography
+        variant="subtitle1"
+        sx={{ fontWeight: "bold", color: "#333" }}
+      >
+        {scraper.name}
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: "0.9rem",
+          color: "#007bff",
+          cursor: "pointer",
+          "&:hover": { textDecoration: "underline" },
+        }}
+        onClick={() =>
+          window.open(
+            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              scraper.shop_address
+            )}`,
+            "_blank"
+          )
+        }
+      >
+        📍 {scraper.shop_address}
+      </Typography>
+      {scraper.rating && (
+        <Typography sx={{ fontSize: "0.9rem", color: "#ff9800" }}>
+          ⭐ {scraper.rating} / 5
+        </Typography>
+      )}
+    </Box>
+  ))
+) : (
+  <Typography
+    sx={{
+      color: "gray",
+      fontStyle: "italic",
+      textAlign: "center",
+      marginTop: "10px",
+    }}
+  >
+    ❌ No nearby scrapers found.
+  </Typography>
+)}
                   </>
                 )}
               </DialogContent>
+
               <DialogActions>
                 <Button
                   onClick={handleCloseDialog}
                   color="primary"
                   variant="contained"
+                  sx={{ fontWeight: "bold" }}
                 >
                   Close
                 </Button>
