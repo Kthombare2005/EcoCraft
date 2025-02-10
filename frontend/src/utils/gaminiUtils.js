@@ -56,22 +56,20 @@
 // const genAI = new GoogleGenerativeAI("AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw");
 
 // export const findNearestScrapersWithGamini = async (city, state) => {
-//   const dynamicPrompt = `
-//     Find only active scrap dealers in or near ${city}, ${state}, who **BUY** scrap materials from sellers.
-//     Exclude dealers who sell scrap or do not purchase scrap from individuals.
-//     Ensure the selected scrap dealers are within 2-3 km or reachable in 10-15 minutes.
-    
-//     Provide the result in JSON format:
-//     [
-//       {
-//         "name": "Scraper Name",
-//         "shop_address": "Shop Address",
-//         "contact_number": "Contact Number"
-//       }
-//     ]
-    
-//     Only return dealers who **actively buy scrap**. If there are none, return an empty array [].
-//   `;
+//   const dynamicPrompt = `You are an expert assistant helping users find active scrap dealers who **BUY** scrap materials from individuals. 
+
+//   ## Task:
+//   Find only **active and legitimate scrap dealers** in or near **${city}, ${state}** who **BUY** scrap materials from sellers.  
+//   **Exclude:** 
+//   - Dealers who **only sell scrap** or act as middlemen without purchasing directly.
+//   - Recyclers or large industries that do **not buy from individuals**.
+//   - Inactive or permanently closed businesses.
+  
+//   ### **Distance & Accessibility Constraint:**
+//   - The scrap dealers must be **within 2-3 km** or **reachable in 10-15 minutes** by local transport.
+//   - If no relevant dealers are found, return an **empty array []**`;
+  
+  
 
 //   try {
 //     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -97,6 +95,222 @@
 //     return [];
 //   }
 // };
+
+
+
+
+
+// import axios from "axios";
+
+// const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
+// const GAMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GAMINI_API_KEY}`;
+
+// /**
+//  * Fetch nearby scrapers within a 4-5 km radius using Gamini API.
+//  * @param {string} city - The city of the user.
+//  * @param {string} state - The state of the user.
+//  * @returns {Promise<Array>} - Returns an array of nearby scrapers.
+//  */
+// export const fetchNearbyScrapersWithGamini = async (city, state) => {
+//   if (!city || !state) {
+//     console.error("City and state are required to fetch nearby scrapers.");
+//     return [];
+//   }
+
+//   const prompt = `
+//   You are an expert in geospatial analysis and a local marketplace advisor. Your task is to identify the **5 nearest scrap dealers** located within a **4-5 km radius** of the following location: **${city}, ${state}, India**.
+
+//   ### Requirements:
+//   1. Focus only on scrap dealers **within 2-3 km** of the specified location.
+//   2. Ensure consistency: The result for repeated queries with the same location should not change.
+//   3. Provide results in **structured JSON format** with the following fields:
+//      - **name**: Name of the scrap dealer.
+//      - **shop_address**: Complete address of the shop (including city, state, and postal code).
+//      - **contact_number**: Phone number of the scrap dealer (if available).
+
+//   ### Additional Instructions:
+//   - If no scrap dealers are found within the radius, return an **empty array** in JSON format.
+//   - Respond only with the **JSON output**, and do not include any additional text or comments.
+
+//   ### Example JSON Output:
+//   [
+//     {
+//       "name": "Goyal Scrap Dealer",
+//       "shop_address": "56, Saket Nagar, Indore, Madhya Pradesh 452018, India",
+//       "contact_number": "+91 94256 67890"
+//     },
+//     {
+//       "name": "Jain Scrap Mart",
+//       "shop_address": "101, New Palasia, Opposite Nehru Park, Indore, Madhya Pradesh 452001, India",
+//       "contact_number": "+91 99266 54321"
+//     }
+//   ]
+//   `;
+
+//   const requestBody = {
+//     contents: [
+//       {
+//         role: "user",
+//         parts: [{ text: prompt }],
+//       },
+//     ],
+//   };
+
+//   try {
+//     const response = await axios.post(GAMINI_API_URL, requestBody, {
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//     });
+
+//     console.log("Raw Gamini API Response:", response.data);
+
+//     const candidateText = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim();
+//     console.log("Extracted Response Text:", candidateText);
+
+//     // Remove any triple backticks from the response
+//     const sanitizedText = candidateText.replace(/```json|```/g, "").trim();
+//     console.log("Sanitized JSON Response:", sanitizedText);
+
+//     // Parse the sanitized JSON text
+//     let scrapersList = [];
+//     try {
+//       scrapersList = JSON.parse(sanitizedText);
+//       if (!Array.isArray(scrapersList)) {
+//         console.error("Parsed data is not an array:", scrapersList);
+//         return [];
+//       }
+//     } catch (jsonError) {
+//       console.error("Error parsing Gamini JSON response:", jsonError);
+//       return [];
+//     }
+
+//     console.log("Final Nearby Scrapers List:", scrapersList);
+//     return scrapersList;
+//   } catch (error) {
+//     console.error("Error fetching nearby scrapers from Gamini API:", error);
+//     return [];
+//   }
+// };
+
+
+
+
+// Import Firebase modules
+// Import Firebase modules
+import { db } from "../firebaseConfig"; // Update path if necessary
+import { doc, getDoc } from "firebase/firestore"; // Import Firestore methods
+
+// Import Axios for API calls
+import axios from "axios";
+
+// Define Gamini API constants
+const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
+const GAMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GAMINI_API_KEY}`;
+
+/**
+ * Fetch nearby scrapers within a 4-5 km radius using Gamini API.
+ * @param {string} city - The city of the user.
+ * @param {string} state - The state of the user.
+ * @returns {Promise<Array>} - Returns an array of nearby scrapers.
+ */
+export const fetchNearbyScrapersWithGamini = async (city, state) => {
+  if (!city || !state) {
+    console.error("City and state are required to fetch nearby scrapers.");
+    return [];
+  }
+
+  const prompt = `
+  You are an expert in geospatial analysis and a local marketplace advisor. Your task is to identify the **5 nearest scrap dealers** located within a **4-5 km radius** of the following location: **${city}, ${state}, India**.
+
+  ### Requirements:
+  1. Focus only on scrap dealers **within 4-5 km** of the specified location.
+  2. Ensure consistency: The result for repeated queries with the same location should not change.
+  3. Provide results in **structured JSON format** with the following fields:
+     - **name**: Name of the scrap dealer.
+     - **shop_address**: Complete address of the shop (including city, state, and postal code).
+     - **contact_number**: Phone number of the scrap dealer (if available).
+
+  ### Additional Instructions:
+  - If no scrap dealers are found within the radius, return an **empty array** in JSON format.
+  - Respond only with the **JSON output**, and do not include any additional text or comments.
+
+  ### Example JSON Output:
+  [
+    {
+      "name": "Goyal Scrap Dealer",
+      "shop_address": "56, Saket Nagar, Indore, Madhya Pradesh 452018, India",
+      "contact_number": "+91 94256 67890"
+    },
+    {
+      "name": "Jain Scrap Mart",
+      "shop_address": "101, New Palasia, Opposite Nehru Park, Indore, Madhya Pradesh 452001, India",
+      "contact_number": "+91 99266 54321"
+    }
+  ]
+  `;
+
+  const requestBody = {
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: prompt }],
+      },
+    ],
+  };
+
+  try {
+    // Fetch Gamini API Results
+    const response = await axios.post(GAMINI_API_URL, requestBody, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const candidateText = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim();
+    const sanitizedText = candidateText.replace(/```json|```/g, "").trim();
+
+    let scrapersList = [];
+    try {
+      scrapersList = JSON.parse(sanitizedText);
+      if (!Array.isArray(scrapersList)) {
+        console.error("Parsed data is not an array:", scrapersList);
+        return [];
+      }
+    } catch (jsonError) {
+      console.error("Error parsing Gamini JSON response:", jsonError);
+      return [];
+    }
+
+    // Fetch "demoscraper" from Firebase
+    const demoScraperRef = doc(db, "users", "XJuY6X93iFP1pKMBPnjRS6Eo7gj1"); // Use the exact document ID
+    const demoScraperSnap = await getDoc(demoScraperRef);
+
+    if (demoScraperSnap.exists()) {
+      console.log("demoscraper data:", demoScraperSnap.data()); // Add this log
+      const demoScraper = {
+        name: demoScraperSnap.data().name || "demoscraper",
+        shop_address: demoScraperSnap.data().shop_address || "Demo Address",
+        contact_number: demoScraperSnap.data().ContactNumber || "N/A",
+      };
+
+      // Ensure "demoscraper" is not duplicated
+      if (!scrapersList.some(scraper => scraper.name === demoScraper.name)) {
+        scrapersList.unshift(demoScraper); // Add "demoscraper" at the top
+      }
+    } else {
+      console.warn("demoscraper account not found in Firebase."); // Log if not found
+    }
+
+    console.log("Final Nearby Scrapers List (with demoscraper):", scrapersList);
+    return scrapersList;
+  } catch (error) {
+    console.error("Error fetching nearby scrapers:", error);
+    return [];
+  }
+};
+
+
 
 
 
@@ -327,57 +541,57 @@
 
 
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-// import axios from "axios";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+// // import axios from "axios";
 
-const genAI = new GoogleGenerativeAI("AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw"); // Replace with your actual Gemini API key
+// const genAI = new GoogleGenerativeAI("AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw"); // Replace with your actual Gemini API key
 
-export const findNearestScrapersWithGamini = async (pinCode, address, city, state) => {
-  try {
-    let searchInput = "";
+// export const findNearestScrapersWithGamini = async (pinCode, address, city, state) => {
+//   try {
+//     let searchInput = "";
 
-    if (pinCode) {
-      console.log("📍 Searching scrapers using Pin Code:", pinCode);
-      searchInput = `Find active scrap dealers near the pin code ${pinCode}. Ensure they are within 5 km and prioritize those who buy scrap materials.`;
-    } else {
-      console.warn("⚠️ Pin Code not provided or inaccurate. Using address as fallback.");
-      searchInput = `
-        Find active scrap dealers near the address:
-        "${address}, ${city}, ${state}". 
-        Ensure they are within 5 km and prioritize those who buy scrap materials.
-      `;
-    }
+//     if (pinCode) {
+//       console.log("📍 Searching scrapers using Pin Code:", pinCode);
+//       searchInput = `Find active scrap dealers near the pin code ${pinCode}. Ensure they are within 5 km and prioritize those who buy scrap materials.`;
+//     } else {
+//       console.warn("⚠️ Pin Code not provided or inaccurate. Using address as fallback.");
+//       searchInput = `
+//         Find active scrap dealers near the address:
+//         "${address}, ${city}, ${state}". 
+//         Ensure they are within 5 km and prioritize those who buy scrap materials.
+//       `;
+//     }
 
-    const dynamicPrompt = `
-      ${searchInput}
+//     const dynamicPrompt = `
+//       ${searchInput}
 
-      Return the result in JSON format:
-      [
-        {
-          "name": "Scraper Name",
-          "shop_address": "Shop Address",
-          "contact_number": "Contact Number",
-          "distance": "Distance in km"
-        }
-      ]
+//       Return the result in JSON format:
+//       [
+//         {
+//           "name": "Scraper Name",
+//           "shop_address": "Shop Address",
+//           "contact_number": "Contact Number",
+//           "distance": "Distance in km"
+//         }
+//       ]
 
-      Only return dealers who actively buy scrap. If none are found, return an empty array [].
-    `;
+//       Only return dealers who actively buy scrap. If none are found, return an empty array [].
+//     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(dynamicPrompt);
+//     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+//     const result = await model.generateContent(dynamicPrompt);
 
-    const rawText = await result.response.text();
-    console.log("🔹 Raw Gemini AI Response:", rawText);
+//     const rawText = await result.response.text();
+//     console.log("🔹 Raw Gemini AI Response:", rawText);
 
-    // Clean and parse the response text
-    const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    const rankedScrapers = sanitizedText.startsWith("[") ? JSON.parse(sanitizedText) : [];
+//     // Clean and parse the response text
+//     const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+//     const rankedScrapers = sanitizedText.startsWith("[") ? JSON.parse(sanitizedText) : [];
 
-    console.log("✅ Ranked Scrapers:", rankedScrapers);
-    return rankedScrapers;
-  } catch (error) {
-    console.error("❌ Error in findNearestScrapersWithGamini:", error);
-    return [];
-  }
-};
+//     console.log("✅ Ranked Scrapers:", rankedScrapers);
+//     return rankedScrapers;
+//   } catch (error) {
+//     console.error("❌ Error in findNearestScrapersWithGamini:", error);
+//     return [];
+//   }
+// };

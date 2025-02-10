@@ -1,7 +1,7 @@
 
 import PropTypes from "prop-types";
 import { motion } from "framer-motion";
-import "./loader.css"; // For Animate.css if needed
+import "./Loader.css"; // For Animate.css if needed
 
 const Loader = ({ type = "framer" }) => {
   if (type === "framer") {

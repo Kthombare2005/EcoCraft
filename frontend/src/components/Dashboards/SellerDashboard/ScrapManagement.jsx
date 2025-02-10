@@ -1026,14 +1026,9 @@ import { Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { serverTimestamp } from "firebase/firestore";
 // import { findNearestScrapersWithGamini } from "../../../utils/firestoreUtils";
-// import { findNearestScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
+import { fetchNearbyScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import axios from "axios";
-import { Snackbar, Alert } from "@mui/material";
-import { query, where } from "firebase/firestore";
-import { Autocomplete } from "@mui/material";
-import { findScrapersFromGoogleMaps } from "../../../utils/googleMapsUtils";
-// import {findScrapersFromGoogleMaps} from "../../../utils/gaminiUtils"
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1051,25 +1046,14 @@ const ScrapManagement = () => {
   const [nearbyScrapers, setNearbyScrapers] = useState([]);
   const [loading, setLoading] = useState(false);
   // const [addressError, setAddressError] = useState("");
-  const [imageValidationLoading, setImageValidationLoading] = useState(false);
-  const [validationMessage, setValidationMessage] = useState("");
-  const [addressValidationLoading, setAddressValidationLoading] =
-    useState(false);
-  const [addressValidationMessage, setAddressValidationMessage] = useState("");
-  // const [successSnackbarOpen, setSuccessSnackbarOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(""); // State to store success messages
-  // const [loadingMessage, setLoadingMessage] = useState(""); // Add this line to your state declarations
-  const [formErrors, setFormErrors] = useState({});
-  const [submissionLoading, setSubmissionLoading] = useState(false);
 
   const validateAddress = async (address, city, state) => {
-    const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M";
+    const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M"; // Replace with your actual API key
     const fullAddress = `${address}, ${city}, ${state}`;
 
-    setAddressValidationLoading(true); // Show loader
-
     try {
-      // Send the request to the Google Maps Geocoding API
+      console.log("Validating full address:", fullAddress);
+
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json`,
         {
@@ -1080,77 +1064,46 @@ const ScrapManagement = () => {
         }
       );
 
-      // Extract results from the API response
+      console.log("Maps API Response:", response.data);
+
       const results = response.data.results;
 
       if (results.length > 0) {
-        const formattedAddress = results[0].formatted_address.toLowerCase();
+        // Loop through all results to find an exact match
+        for (let result of results) {
+          const { formatted_address } = result;
 
-        // Check if the formatted address includes the provided address, city, and state
-        const isAddressValid =
-          formattedAddress.includes(address.toLowerCase()) &&
-          formattedAddress.includes(city.toLowerCase()) &&
-          formattedAddress.includes(state.toLowerCase());
+          // Check if the formatted address contains the input address, city, and state
+          const isAddressValid =
+            formatted_address.toLowerCase().includes(address.toLowerCase()) &&
+            formatted_address.toLowerCase().includes(city.toLowerCase()) &&
+            formatted_address.toLowerCase().includes(state.toLowerCase());
 
-        if (isAddressValid) {
-          setAddressValidationMessage("✅ Address validated successfully!");
-          setTimeout(() => {
-            setAddressValidationMessage("");
-          }, 5000); // Clear the message after 5 seconds
-          return true; // Address is valid
+          if (isAddressValid) {
+            console.log("Valid address found:", formatted_address);
+            return true;
+          }
         }
       }
 
-      // If no valid address is found
-      setAddressValidationMessage(
-        "❌ The entered address does not match the selected city and state."
-      );
-      setTimeout(() => {
-        setAddressValidationMessage("");
-      }, 5000);
-
-      return false;
+      console.warn("No valid address found matching the entered details.");
+      return false; // Address not valid
     } catch (error) {
-      // Handle errors during the API call
-      console.error("Error during address validation:", error.message || error);
-      setAddressValidationMessage(
-        "❌ Failed to validate the address. Please try again."
-      );
+      console.error("Error validating address:", error);
       return false;
-    } finally {
-      setAddressValidationLoading(false); // Hide loader after the process completes
     }
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.scrapName) errors.scrapName = "Scrap name is required.";
-    if (!formData.address) errors.address = "Address is required.";
-    if (!formData.pinCode) errors.pinCode = "Pin code is required.";
-    if (!formData.state) errors.state = "State is required.";
-    if (!formData.city) errors.city = "City is required.";
-    if (!formData.scrapType) errors.scrapType = "Scrap type is required.";
-    if (!formData.weight) errors.weight = "Weight is required.";
-    if (!formData.unit) errors.unit = "Weight unit is required.";
-    if (!formData.image) errors.image = "Please upload an image.";
-
-    setFormErrors(errors); // Update the error state
-    return Object.keys(errors).length === 0; // Return true if no errors
   };
 
   const handleFormSubmit = async () => {
-    if (!validateForm()) {
-      setValidationError(
-        "❌ All fields are necessary. Please fill out all fields."
-      );
+    if (!formData.image) {
+      alert("Please upload an image.");
       return;
     }
 
-    setLoading(true); // Show loader for the entire submission process
+    setLoading(true); // Show spinner or loader
     setValidationError(""); // Clear previous errors
 
     try {
-      // Address validation
       const isAddressValid = await validateAddress(
         formData.address,
         formData.city,
@@ -1158,88 +1111,47 @@ const ScrapManagement = () => {
       );
 
       if (!isAddressValid) {
-        setFormErrors((prev) => ({
-          ...prev,
-          address:
-            "The entered address does not match the selected city and state.",
-        }));
-        setLoading(false);
+        setLoading(false); // Hide spinner
+        alert(
+          "The entered address does not match the selected city and state."
+        );
         return;
       }
 
-      // Add a loader for the transition from address validation to scrap submission
-      setSubmissionLoading(true);
+      // Proceed with form submission
+      await addDoc(collection(db, "scrapListings"), {
+        ...formData,
+        createdOn: serverTimestamp(),
+      });
 
-      // Simulate a delay for better UX (optional)
-      setTimeout(async () => {
-        try {
-          const user = auth.currentUser;
-          if (!user) {
-            setLoading(false);
-            setSubmissionLoading(false);
-            setValidationError("❌ You must be logged in to list scrap.");
-            return;
-          }
-
-          await addDoc(collection(db, "scrapListings"), {
-            ...formData,
-            userId: user.uid,
-            createdOn: serverTimestamp(),
-          });
-
-          setSuccessMessage("✅ Scrap added successfully!");
-          setSubmissionLoading(false); // Stop transition loader
-
-          // Close the dialog and reset after 3 seconds
-          setTimeout(() => {
-            setSuccessMessage("");
-            handleDialogClose();
-          }, 3000);
-
-          fetchScrapListings(user.uid); // Fetch updated listings
-        } catch (error) {
-          console.error("Error adding scrap listing:", error);
-          setValidationError("❌ Failed to add scrap. Please try again.");
-          setSubmissionLoading(false);
-        } finally {
-          setLoading(false);
-        }
-      }, 2000); // Simulate a small delay (2 seconds) for transition
+      handleDialogClose();
+      fetchScrapListings(); // Refresh the scrap listing
+      alert("Scrap listing added successfully!");
     } catch (error) {
-      console.error("Error during form submission:", error);
-      setValidationError("❌ An error occurred during the process.");
-      setSubmissionLoading(false);
+      console.error("Error adding scrap listing:", error);
     } finally {
-      setLoading(false);
+      setLoading(false); // Hide spinner
     }
   };
 
   const handleOpenDialog = async (scrap) => {
     setSelectedScrap(scrap);
     setOpenDialog(true);
-    setLoading(true); // Show full-screen loader
-  
-    try {
-      // 🔹 Extract User's Pin Code & Address
-      const { pinCode, address, city, state } = scrap;
-  
-      if (!pinCode && (!address || !city || !state)) {
-        console.error("❌ Insufficient details for finding nearby scrapers.");
-        alert("⚠️ Please provide either a pin code or a complete address.");
+    setLoading(true); // Show loading spinner
+
+    if (scrap.city && scrap.state) {
+      try {
+        const scrapers = await fetchNearbyScrapersWithGamini(
+          scrap.city,
+          scrap.state
+        );
+        setNearbyScrapers(scrapers);
+      } catch (error) {
+        console.error("Error fetching nearby scrapers:", error);
+        setNearbyScrapers([]);
+      } finally {
         setLoading(false);
-        return;
       }
-  
-      // 🔹 Fetch Nearby Scrapers Using Google Maps
-      const scrapers = await findScrapersFromGoogleMaps(pinCode, address, city, state);
-  
-      // 🔹 Update State with Scrapers
-      setNearbyScrapers(scrapers);
-    } catch (error) {
-      console.error("❌ Error finding scrapers:", error);
-      setNearbyScrapers([]);
-    } finally {
-      setLoading(false); // Hide loading spinner
     }
   };
 
@@ -1248,37 +1160,30 @@ const ScrapManagement = () => {
     setSelectedScrap(null);
   };
 
-  const fetchScrapListings = async (userId) => {
+  const fetchScrapListings = async () => {
     try {
-      // Query Firestore for scraps added by the logged-in user
-      const q = query(
-        collection(db, "scrapListings"),
-        where("userId", "==", userId)
-      );
-      const querySnapshot = await getDocs(q);
-
-      // Map the query results to an array
+      const querySnapshot = await getDocs(collection(db, "scrapListings"));
       const listings = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-      setScrapListings(listings); // Update state with the fetched listings
+      setScrapListings(listings);
     } catch (error) {
       console.error("Error fetching scrap listings:", error);
     }
   };
 
   const [formData, setFormData] = useState({
-    scrapName: "", // Field for scrap name
-    address: "", // Field for address
-    pinCode: "", // Field for pin code
-    city: "", // Field for city
-    state: "", // Field for state
-    scrapType: "", // Field for scrap type
-    weight: "", // Field for weight
-    unit: "kg", // Default value for unit
-    image: null, // Field for image
+    name: "",
+    contactNumber: "",
+    address: "",
+    city: "",
+    state: "",
+    scrapType: "",
+    weight: "",
+    unit: "kg",
+    price: "",
+    image: null,
   });
 
   const scrapTypes = [
@@ -1306,11 +1211,9 @@ const ScrapManagement = () => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         fetchUserData(currentUser.uid);
-        fetchScrapListings(currentUser.uid); // Fetch only the logged-in user's scraps
-      } else {
-        setScrapListings([]); // Clear listings if no user is logged in
       }
     });
+    fetchScrapListings();
 
     return () => {
       window.removeEventListener("resize", handleResize);
@@ -1341,7 +1244,8 @@ const ScrapManagement = () => {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setFormData({
-      scrapName: "",
+      name: formData.name,
+      contactNumber: formData.contactNumber,
       address: "",
       pinCode: "",
       city: "",
@@ -1349,10 +1253,10 @@ const ScrapManagement = () => {
       scrapType: "",
       weight: "",
       unit: "kg",
+      price: "",
       image: null,
     });
-    setValidationError(""); // Clear validation errors
-    setSuccessMessage(""); // Clear success message
+    setValidationError("");
   };
 
   // const handlePinCodeChange = (e) => {
@@ -1362,11 +1266,11 @@ const ScrapManagement = () => {
   //   }
   // };
 
-  // const handleStateChange = (e) => {
-  //   const selectedState = e.target.value;
-  //   setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
-  //   setCities(citiesJson[selectedState] || []);
-  // };
+  const handleStateChange = (e) => {
+    const selectedState = e.target.value;
+    setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
+    setCities(citiesJson[selectedState] || []);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1448,38 +1352,34 @@ const ScrapManagement = () => {
       const reader = new FileReader();
       reader.onload = async () => {
         if (!formData.scrapType) {
-          setValidationMessage(
-            "❌ Please select a scrap type before uploading an image."
-          );
+          alert("Please select a scrap type before uploading an image.");
           return;
         }
 
+        // Extract base64 image data
         const imageData = reader.result.split(",")[1];
 
-        setImageValidationLoading(true); // Show loader
-        setValidationMessage(""); // Clear previous messages
-
+        // Validate image using IDX API
         const isValid = await validateImageWithIDX(
           imageData,
           formData.scrapType
         );
 
-        setImageValidationLoading(false); // Hide loader
+        console.log(
+          "Validation Result:",
+          isValid ? "Relevant Scrap" : "Not Relevant Scrap"
+        );
 
+        // Update state and display appropriate messages
         if (isValid) {
           setFormData((prev) => ({ ...prev, image: reader.result }));
-          setValidationMessage("✅ Image validated successfully!");
-          setTimeout(() => {
-            setValidationMessage("");
-          }, 5000);
+          setValidationError(""); // Clear any error message
+          alert("✅ Image validated successfully!");
         } else {
-          setFormData((prev) => ({ ...prev, image: null }));
-          setValidationMessage(
+          setFormData((prev) => ({ ...prev, image: null })); // Clear image if invalid
+          setValidationError(
             "❌ The uploaded image is not relevant to the selected scrap type."
           );
-          setTimeout(() => {
-            setValidationMessage("");
-          }, 5000);
         }
       };
 
@@ -1506,37 +1406,6 @@ const ScrapManagement = () => {
         >
           Scrap Management
         </Typography>
-
-        <Snackbar
-          open={!!successMessage}
-          autoHideDuration={3000}
-          onClose={() => setSuccessMessage("")}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
-          <Alert
-            onClose={() => setSuccessMessage("")}
-            severity="success"
-            sx={{ width: "100%" }}
-          >
-            {successMessage}
-          </Alert>
-        </Snackbar>
-        <Snackbar
-          open={!!addressValidationMessage}
-          autoHideDuration={3000}
-          onClose={() => setAddressValidationMessage("")}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
-          <Alert
-            onClose={() => setAddressValidationMessage("")}
-            severity={
-              addressValidationMessage.includes("✅") ? "success" : "error"
-            }
-            sx={{ width: "100%" }}
-          >
-            {addressValidationMessage}
-          </Alert>
-        </Snackbar>
 
         <Accordion defaultExpanded>
           <AccordionSummary
@@ -1690,120 +1559,77 @@ const ScrapManagement = () => {
                   <LoadingSpinner />
                 ) : (
                   <>
-                    {/* Scrap Details */}
-                    <Box
-                      sx={{
-                        padding: "12px",
-                        backgroundColor: "#f9f9f9",
-                        borderRadius: "8px",
-                      }}
+                    <Typography variant="h6">
+                      Scrap Name: {selectedScrap.scrapName}
+                    </Typography>
+                    <Typography>Type: {selectedScrap.scrapType}</Typography>
+                    <Typography>
+                      Weight: {selectedScrap.weight} {selectedScrap.unit}
+                    </Typography>
+                    <Typography>Price: ₹{selectedScrap.price}</Typography>
+                    <Typography>
+                      Location: {selectedScrap.city}, {selectedScrap.state}
+                    </Typography>
+                    <Typography>
+                      Contact: {selectedScrap.contactNumber}
+                    </Typography>
+                    <Typography>Address: {selectedScrap.address}</Typography>
+
+                    {/* Nearby Scrapers */}
+                    <Typography
+                      variant="h6"
+                      sx={{ marginTop: "20px", fontWeight: "bold" }}
                     >
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: "bold", color: "#004080" }}
-                      >
-                        {selectedScrap.scrapName}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        📌 <strong>Type:</strong> {selectedScrap.scrapType}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        ⚖️ <strong>Weight:</strong> {selectedScrap.weight}{" "}
-                        {selectedScrap.unit}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        💰 <strong>Price:</strong> ₹{selectedScrap.price}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        📍 <strong>Location:</strong> {selectedScrap.city},{" "}
-                        {selectedScrap.state}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        📞 <strong>Contact:</strong>{" "}
-                        {selectedScrap.contactNumber}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.9rem", color: "#666" }}>
-                        🏠 <strong>Address:</strong> {selectedScrap.address}
-                      </Typography>
-                    </Box>
+                      Nearby Scrap Dealers (Within 4-5 km):
+                    </Typography>
 
-                    {/* 🔹 Nearby Scrapers Section */}
-                    {/* Nearby Scrapers */}
-                    {/* Nearby Scrapers */}
-<Typography
-  variant="h6"
-  sx={{ marginTop: "20px", fontWeight: "bold", color: "#004080" }}
->
-  Nearby Scrap Dealers (Top 5):
-</Typography>
-
-{nearbyScrapers.length > 0 ? (
-  nearbyScrapers.slice(0, 5).map((scraper, index) => (
-    <Box
-      key={index}
-      sx={{
-        padding: "12px",
-        marginTop: "10px",
-        border: "1px solid #ddd",
-        borderRadius: "8px",
-        backgroundColor: "#f4f4f4",
-        transition: "0.3s",
-        "&:hover": { boxShadow: "0px 4px 8px rgba(0,0,0,0.2)" },
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        sx={{ fontWeight: "bold", color: "#333" }}
-      >
-        {scraper.name}
-      </Typography>
-      <Typography
-        sx={{
-          fontSize: "0.9rem",
-          color: "#007bff",
-          cursor: "pointer",
-          "&:hover": { textDecoration: "underline" },
-        }}
-        onClick={() =>
-          window.open(
-            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-              scraper.shop_address
-            )}`,
-            "_blank"
-          )
-        }
-      >
-        📍 {scraper.shop_address}
-      </Typography>
-      {scraper.rating && (
-        <Typography sx={{ fontSize: "0.9rem", color: "#ff9800" }}>
-          ⭐ {scraper.rating} / 5
-        </Typography>
-      )}
-    </Box>
-  ))
-) : (
-  <Typography
-    sx={{
-      color: "gray",
-      fontStyle: "italic",
-      textAlign: "center",
-      marginTop: "10px",
-    }}
-  >
-    ❌ No nearby scrapers found.
-  </Typography>
-)}
+                    {nearbyScrapers.length > 0 ? (
+                      nearbyScrapers.map((scraper, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            padding: "10px",
+                            border: "1px solid #ccc",
+                            borderRadius: "8px",
+                            backgroundColor: "#f9f9f9",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {scraper.name}
+                          </Typography>
+                          <Typography>📍 {scraper.shop_address}</Typography>
+                          <Typography>
+                            📞 {scraper.contact_number || "N/A"}
+                          </Typography>
+                          {scraper.contact_number && (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              href={`tel:${scraper.contact_number}`}
+                              sx={{ marginTop: "5px" }}
+                            >
+                              Call Now
+                            </Button>
+                          )}
+                        </Box>
+                      ))
+                    ) : (
+                      <Typography sx={{ color: "gray", fontStyle: "italic" }}>
+                        No nearby scrapers found.
+                      </Typography>
+                    )}
                   </>
                 )}
               </DialogContent>
-
               <DialogActions>
                 <Button
                   onClick={handleCloseDialog}
                   color="primary"
                   variant="contained"
-                  sx={{ fontWeight: "bold" }}
                 >
                   Close
                 </Button>
@@ -1854,37 +1680,6 @@ const ScrapManagement = () => {
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ marginTop: "5px" }}>
-              {/* Name Field */}
-              {submissionLoading && (
-                <Box
-                  sx={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    width: "100vw",
-                    height: "100vh",
-                    backgroundColor: "rgba(255, 255, 255, 0.8)",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flexDirection: "column",
-                    zIndex: 2000,
-                  }}
-                >
-                  <LoadingSpinner />
-                  <Typography
-                    sx={{
-                      color: "#333",
-                      fontWeight: "bold",
-                      fontSize: "1.2rem",
-                      marginTop: "16px",
-                    }}
-                  >
-                    Completing Scrap Listing...
-                  </Typography>
-                </Box>
-              )}
-
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -1901,8 +1696,6 @@ const ScrapManagement = () => {
                   }}
                 />
               </Grid>
-
-              {/* Contact Number Field */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -1919,8 +1712,6 @@ const ScrapManagement = () => {
                   }}
                 />
               </Grid>
-
-              {/* Scrap Name Field */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -1929,8 +1720,6 @@ const ScrapManagement = () => {
                   value={formData.scrapName}
                   onChange={handleInputChange}
                   variant="outlined"
-                  error={!!formErrors.scrapName}
-                  helperText={formErrors.scrapName}
                   sx={{
                     "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
                       {
@@ -1940,7 +1729,6 @@ const ScrapManagement = () => {
                 />
               </Grid>
 
-              {/* Address and Pin Code Fields */}
               <Grid
                 container
                 spacing={2}
@@ -1954,8 +1742,8 @@ const ScrapManagement = () => {
                     value={formData.address}
                     onChange={handleInputChange}
                     variant="outlined"
-                    error={!!formErrors.address}
-                    helperText={formErrors.address}
+                    error={!!validationError} // Show error if validationError is set
+                    helperText={validationError} // Display error message
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -1966,70 +1754,51 @@ const ScrapManagement = () => {
                     value={formData.pinCode}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (/^\d{0,6}$/.test(value)) {
+                      if (/^\d{0,5}$/.test(value)) {
                         setFormData((prev) => ({ ...prev, pinCode: value }));
                       }
                     }}
                     inputProps={{ maxLength: 6 }}
                     variant="outlined"
-                    error={!!formErrors.pinCode}
-                    helperText={formErrors.pinCode}
                   />
                 </Grid>
               </Grid>
 
-              {/* State and City Fields */}
-              {/* State Selection with Search Feature */}
               <Grid item xs={12} sm={6}>
-                <Autocomplete
-                  options={statesJson.states} // State list from JSON
-                  getOptionLabel={(option) => option} // Display option as label
-                  value={formData.state || null}
-                  onChange={(event, newValue) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      state: newValue,
-                      city: "",
-                    })); // Reset city when state changes
-                    setCities(citiesJson[newValue] || []); // Update city options based on selected state
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="State"
-                      variant="outlined"
-                      fullWidth
-                      error={!!formErrors.state}
-                      helperText={formErrors.state}
-                    />
-                  )}
-                />
+                <TextField
+                  fullWidth
+                  label="State"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleStateChange}
+                  select
+                  variant="outlined"
+                >
+                  {statesJson.states.map((state) => (
+                    <MenuItem key={state} value={state}>
+                      {state}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
-
-              {/* City Selection with Search Feature */}
               <Grid item xs={12} sm={6}>
-                <Autocomplete
-                  options={cities} // City list based on selected state
-                  getOptionLabel={(option) => option} // Display option as label
-                  value={formData.city || null}
-                  onChange={(event, newValue) => {
-                    setFormData((prev) => ({ ...prev, city: newValue }));
-                  }}
-                  disabled={!formData.state} // Disable city selection until a state is selected
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="City"
-                      variant="outlined"
-                      fullWidth
-                      error={!!formErrors.city}
-                      helperText={formErrors.city}
-                    />
-                  )}
-                />
+                <TextField
+                  fullWidth
+                  label="City"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  select
+                  variant="outlined"
+                  disabled={!formData.state}
+                >
+                  {cities.map((city) => (
+                    <MenuItem key={city} value={city}>
+                      {city}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
-
-              {/* Scrap Type Field */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -2039,8 +1808,6 @@ const ScrapManagement = () => {
                   onChange={handleInputChange}
                   select
                   variant="outlined"
-                  error={!!formErrors.scrapType}
-                  helperText={formErrors.scrapType}
                 >
                   {scrapTypes.map((type) => (
                     <MenuItem key={type} value={type}>
@@ -2049,8 +1816,6 @@ const ScrapManagement = () => {
                   ))}
                 </TextField>
               </Grid>
-
-              {/* Weight and Unit Fields */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -2059,8 +1824,6 @@ const ScrapManagement = () => {
                   value={formData.weight}
                   onChange={handleInputChange}
                   variant="outlined"
-                  error={!!formErrors.weight}
-                  helperText={formErrors.weight}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -2072,8 +1835,6 @@ const ScrapManagement = () => {
                   onChange={handleInputChange}
                   select
                   variant="outlined"
-                  error={!!formErrors.unit}
-                  helperText={formErrors.unit}
                 >
                   {weightUnits.map((unit) => (
                     <MenuItem key={unit} value={unit}>
@@ -2082,10 +1843,7 @@ const ScrapManagement = () => {
                   ))}
                 </TextField>
               </Grid>
-
-              {/* Image Upload and Validation */}
               <Grid item xs={12}>
-                {/* Image Upload Button */}
                 <Button
                   variant="contained"
                   component="label"
@@ -2106,136 +1864,24 @@ const ScrapManagement = () => {
                   Upload Image
                   <input type="file" hidden onChange={handleFileChange} />
                 </Button>
-
-                {/* Image Field Validation Error */}
-                {formErrors.image && (
-                  <Typography
-                    sx={{
-                      color: "red",
-                      fontWeight: "bold",
-                      marginTop: "8px",
-                      textAlign: "center",
-                    }}
-                  >
-                    {formErrors.image}
-                  </Typography>
-                )}
-
-                {/* Show Image Validation Loader (Full-Screen) */}
-                {imageValidationLoading && (
-                  <Box
-                    sx={{
-                      position: "fixed",
-                      top: 0,
-                      left: 0,
-                      width: "100vw",
-                      height: "100vh",
-                      backgroundColor: "rgba(255, 255, 255, 0.8)",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      flexDirection: "column",
-                      zIndex: 2000,
-                    }}
-                  >
-                    <LoadingSpinner />
-                    <Typography
-                      sx={{
-                        color: "#333",
-                        fontWeight: "bold",
-                        fontSize: "1.2rem",
-                        marginTop: "16px",
-                      }}
-                    >
-                      Validating Image...
-                    </Typography>
-                  </Box>
-                )}
-
-                {/* Show Image Validation Success/Failure Message */}
-                {!imageValidationLoading && validationMessage && (
-                  <Box sx={{ marginTop: "16px", textAlign: "center" }}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: validationMessage.includes("✅")
-                          ? "green"
-                          : "red",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    >
-                      {validationMessage}
-                    </Typography>
-                  </Box>
-                )}
-
-                {/* Show Image Preview After Validation */}
-                {!imageValidationLoading && formData.image && (
+                {formData.image && (
                   <Box sx={{ marginTop: "16px", textAlign: "center" }}>
                     <Typography>Image Preview:</Typography>
                     <img
                       src={formData.image}
                       alt="Preview"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "200px",
-                        borderRadius: "8px",
-                      }}
+                      style={{ maxWidth: "100%", maxHeight: "200px" }}
                     />
                   </Box>
                 )}
-              </Grid>
-
-              {/* Show Address Validation Loader (Full-Screen) */}
-              {addressValidationLoading && (
-                <Box
-                  sx={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    width: "100vw",
-                    height: "100vh",
-                    backgroundColor: "rgba(255, 255, 255, 0.8)",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flexDirection: "column",
-                    zIndex: 2000,
-                  }}
-                >
-                  <LoadingSpinner />
-                  <Typography
-                    sx={{
-                      color: "#333",
-                      fontWeight: "bold",
-                      fontSize: "1.2rem",
-                      marginTop: "16px",
-                    }}
-                  >
-                    Validating Address...
-                  </Typography>
-                </Box>
-              )}
-
-              {/* General Validation Error */}
-              {validationError && (
-                <Box sx={{ textAlign: "center", marginBottom: "16px" }}>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      color: "red",
-                      fontWeight: "bold",
-                      fontSize: "0.9rem",
-                    }}
-                  >
+                {validationError && (
+                  <Typography color="error" sx={{ marginTop: "8px" }}>
                     {validationError}
                   </Typography>
-                </Box>
-              )}
+                )}
+              </Grid>
             </Grid>
           </DialogContent>
-
           <DialogActions
             sx={{
               justifyContent: "space-between",
