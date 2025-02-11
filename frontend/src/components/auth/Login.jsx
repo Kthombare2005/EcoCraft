@@ -140,6 +140,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom"; // useNavigate hook for navigation
 import Image2 from "../../assets/Image2.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { log } from "../../../utils/log";
 
 const Login = ({ onSwitch }) => {
   const [email, setEmail] = useState("");
@@ -159,7 +160,7 @@ const Login = ({ onSwitch }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      console.log("Logged in user: ", user); // Debugging: Log the user info
+      log("Logged in user: ", user); // Debugging: Log the user info
 
       // Fetch the user's account type from Firestore
       const userRef = doc(db, "users", user.uid); // Access the user's document

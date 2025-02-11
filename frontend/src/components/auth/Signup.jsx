@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth"; // Import Fireba
 import "./AuthPage.css";
 import Image2 from "../../assets/Image2.png"; // Import the image
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons for password visibility toggle
+import { log } from "../../../utils/log";
 
 const Signup = ({ onSwitch }) => {
   const [email, setEmail] = useState("");
@@ -85,7 +86,7 @@ const Signup = ({ onSwitch }) => {
 
         setSignupSuccess("Signup successful! Redirecting to login...");
         setSignupError(""); // Clear any previous errors
-        console.log("User data stored in Firestore successfully!");
+        log("User data stored in Firestore successfully!");
 
         setTimeout(() => {
           onSwitch("login"); // Switch to the login page after a brief delay
