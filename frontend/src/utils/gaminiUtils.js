@@ -27,7 +27,7 @@
 //     });
 
 //     const result = await response.json();
-//     console.log("Gamini Response:", result);
+//     log("Gamini Response:", result);
 
 //     // Extract ranked list from Gamini's response
 //     const rankedScrapers = result.candidates?.[0]?.content
@@ -81,14 +81,14 @@
 //     // Remove backticks and sanitize the response
 //     const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
 
-//     console.log("Sanitized Response Text:", sanitizedText);
+//     log("Sanitized Response Text:", sanitizedText);
 
 //     // Parse the sanitized response text
 //     const rankedScrapers = sanitizedText.startsWith("[")
 //       ? JSON.parse(sanitizedText)
 //       : []; // Fallback to an empty array if parsing fails
 
-//     console.log("Ranked Scrapers:", rankedScrapers);
+//     log("Ranked Scrapers:", rankedScrapers);
 //     return rankedScrapers;
 //   } catch (error) {
 //     console.error("Error in Gamini API request:", error);
@@ -163,14 +163,14 @@
 //       },
 //     });
 
-//     console.log("Raw Gamini API Response:", response.data);
+//     log("Raw Gamini API Response:", response.data);
 
 //     const candidateText = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim();
-//     console.log("Extracted Response Text:", candidateText);
+//     log("Extracted Response Text:", candidateText);
 
 //     // Remove any triple backticks from the response
 //     const sanitizedText = candidateText.replace(/```json|```/g, "").trim();
-//     console.log("Sanitized JSON Response:", sanitizedText);
+//     log("Sanitized JSON Response:", sanitizedText);
 
 //     // Parse the sanitized JSON text
 //     let scrapersList = [];
@@ -185,7 +185,7 @@
 //       return [];
 //     }
 
-//     console.log("Final Nearby Scrapers List:", scrapersList);
+//     log("Final Nearby Scrapers List:", scrapersList);
 //     return scrapersList;
 //   } catch (error) {
 //     console.error("Error fetching nearby scrapers from Gamini API:", error);
@@ -200,6 +200,7 @@
 // Import Firebase modules
 import { db } from "../firebaseConfig"; // Update path if necessary
 import { doc, getDoc } from "firebase/firestore"; // Import Firestore methods
+import { log } from "./log";
 
 // Import Axios for API calls
 import axios from "axios";
@@ -287,7 +288,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
     const demoScraperSnap = await getDoc(demoScraperRef);
 
     if (demoScraperSnap.exists()) {
-      console.log("demoscraper data:", demoScraperSnap.data()); // Add this log
+      log("demoscraper data:", demoScraperSnap.data()); // Add this log
       const demoScraper = {
         name: demoScraperSnap.data().name || "demoscraper",
         shop_address: demoScraperSnap.data().shop_address || "Demo Address",
@@ -302,7 +303,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
       console.warn("demoscraper account not found in Firebase."); // Log if not found
     }
 
-    console.log("Final Nearby Scrapers List (with demoscraper):", scrapersList);
+    log("Final Nearby Scrapers List (with demoscraper):", scrapersList);
     return scrapersList;
   } catch (error) {
     console.error("Error fetching nearby scrapers:", error);
@@ -323,7 +324,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 
 // export const findNearestScrapersWithGamini = async (userLat, userLng) => {
 //   try {
-//     console.log("🔹 Fetching real-time scrap dealers from Google Maps...");
+//     log("🔹 Fetching real-time scrap dealers from Google Maps...");
 
 //     // 🔹 Step 1: Use Google Places API to find scrap dealers
 //     const googleMapsResponse = await axios.get(
@@ -346,7 +347,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //       return [];
 //     }
 
-//     console.log(`✅ Found ${places.length} scrap dealers via Google Maps.`);
+//     log(`✅ Found ${places.length} scrap dealers via Google Maps.`);
 
 //     // 🔹 Step 2: Extract and refine Google Maps data
 //     const scraperDetails = await Promise.all(
@@ -385,7 +386,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //     );
 
 //     // 🔹 Step 3: Use Gemini AI to refine and rank the best scrapers
-//     console.log("🔹 Sending scraper details to Gemini AI for ranking...");
+//     log("🔹 Sending scraper details to Gemini AI for ranking...");
 
 //     const dynamicPrompt = `
 //       Rank the following scrap dealers based on:
@@ -414,7 +415,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 
 //     // 🔹 Extract AI response
 //     const rawText = await geminiResult.response.text();
-//     console.log("🔹 Raw Gemini AI Response:", rawText);
+//     log("🔹 Raw Gemini AI Response:", rawText);
 
 //     // 🔹 Step 4: Clean & Parse JSON Response
 //     const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -428,7 +429,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //     }
     
 
-//     console.log("✅ Final Ranked Scrapers:", rankedScrapers);
+//     log("✅ Final Ranked Scrapers:", rankedScrapers);
 //     return rankedScrapers;
 //   } catch (error) {
 //     console.error("❌ Error in `findNearestScrapersWithGamini`:", error);
@@ -447,7 +448,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 // // 🔹 Fetch nearby scrap dealers using Google Maps API
 // export const findScrapersFromGoogleMaps = async (userLat, userLng) => {
 //   try {
-//     console.log("📍 Fetching nearby scrap dealers from Google Maps...");
+//     log("📍 Fetching nearby scrap dealers from Google Maps...");
 
 //     const googleMapsResponse = await axios.get(
 //       `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
@@ -469,7 +470,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //       return [];
 //     }
 
-//     console.log(`✅ Found ${places.length} scrap dealers via Google Maps.`);
+//     log(`✅ Found ${places.length} scrap dealers via Google Maps.`);
 
 //     // Extract relevant details from Google API response
 //     return places.map((place) => ({
@@ -489,7 +490,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 // // 🔹 Rank & filter the best scrap dealers using Gemini AI
 // export const findNearestScrapersWithGamini = async (userLat, userLng, googleMapsScrapers) => {
 //   try {
-//     console.log("🔹 Refining scrap dealer list with Gemini AI...");
+//     log("🔹 Refining scrap dealer list with Gemini AI...");
 
 //     if (!googleMapsScrapers || googleMapsScrapers.length === 0) {
 //       console.warn("⚠️ No scrapers available to refine.");
@@ -524,13 +525,13 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 
 //     // 🔹 Extract AI response
 //     const rawText = await geminiResult.response.text();
-//     console.log("🔹 Raw Gemini AI Response:", rawText);
+//     log("🔹 Raw Gemini AI Response:", rawText);
 
 //     // 🔹 Clean & Parse JSON Response
 //     const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
 //     const rankedScrapers = sanitizedText.startsWith("[") ? JSON.parse(sanitizedText) : [];
 
-//     console.log("✅ Ranked Scrapers:", rankedScrapers);
+//     log("✅ Ranked Scrapers:", rankedScrapers);
 //     return rankedScrapers;
 //   } catch (error) {
 //     console.error("❌ Error in Gemini AI request:", error);
@@ -551,7 +552,7 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //     let searchInput = "";
 
 //     if (pinCode) {
-//       console.log("📍 Searching scrapers using Pin Code:", pinCode);
+//       log("📍 Searching scrapers using Pin Code:", pinCode);
 //       searchInput = `Find active scrap dealers near the pin code ${pinCode}. Ensure they are within 5 km and prioritize those who buy scrap materials.`;
 //     } else {
 //       console.warn("⚠️ Pin Code not provided or inaccurate. Using address as fallback.");
@@ -582,13 +583,13 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
 //     const result = await model.generateContent(dynamicPrompt);
 
 //     const rawText = await result.response.text();
-//     console.log("🔹 Raw Gemini AI Response:", rawText);
+//     log("🔹 Raw Gemini AI Response:", rawText);
 
 //     // Clean and parse the response text
 //     const sanitizedText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
 //     const rankedScrapers = sanitizedText.startsWith("[") ? JSON.parse(sanitizedText) : [];
 
-//     console.log("✅ Ranked Scrapers:", rankedScrapers);
+//     log("✅ Ranked Scrapers:", rankedScrapers);
 //     return rankedScrapers;
 //   } catch (error) {
 //     console.error("❌ Error in findNearestScrapersWithGamini:", error);

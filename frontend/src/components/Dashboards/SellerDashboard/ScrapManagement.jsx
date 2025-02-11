@@ -52,7 +52,7 @@
 //   //   const fullAddress = `${address}, ${city}, ${state}`;
 
 //   //   try {
-//   //     console.log("Validating full address:", fullAddress);
+//   //     log("Validating full address:", fullAddress);
 
 //   //     const response = await axios.get(
 //   //       `https://maps.googleapis.com/maps/api/geocode/json`,
@@ -64,7 +64,7 @@
 //   //       }
 //   //     );
 
-//   //     console.log("Maps API Response:", response.data);
+//   //     log("Maps API Response:", response.data);
 
 //   //     const results = response.data.results;
 
@@ -80,7 +80,7 @@
 //   //           formatted_address.toLowerCase().includes(state.toLowerCase());
 
 //   //         if (isAddressValid) {
-//   //           console.log("Valid address found:", formatted_address);
+//   //           log("Valid address found:", formatted_address);
 //   //           return true;
 //   //         }
 //   //       }
@@ -99,7 +99,7 @@
 //     const fullAddress = `${address}, ${city}, ${state}`;
 
 //     try {
-//       console.log("Validating full address:", fullAddress);
+//       log("Validating full address:", fullAddress);
 
 //       // Start the loader
 //       setLoading(true);
@@ -114,7 +114,7 @@
 //         }
 //       );
 
-//       console.log("Maps API Response:", response.data);
+//       log("Maps API Response:", response.data);
 
 //       const results = response.data.results;
 
@@ -128,7 +128,7 @@
 //             formatted_address.toLowerCase().includes(state.toLowerCase());
 
 //           if (isAddressValid) {
-//             console.log("Valid address found:", formatted_address);
+//             log("Valid address found:", formatted_address);
 //             setLoading(false); // Stop the loader
 //             return true;
 //           }
@@ -354,7 +354,7 @@
 
 //       const result = await response.json();
 
-//       console.log("IDX API Response:", result);
+//       log("IDX API Response:", result);
 
 //       // Ensure the response structure is correct
 //       if (!result.candidates || result.candidates.length === 0) {
@@ -365,11 +365,11 @@
 //       // Extract the response text
 //       const candidateText =
 //         result.candidates[0]?.content?.parts?.[0]?.text?.trim();
-//       console.log("Candidate Text:", candidateText);
+//       log("Candidate Text:", candidateText);
 
 //       // Match the candidate text to expected values
 //       const isRelevantScrap = candidateText === "Relevant Scrap";
-//       console.log(
+//       log(
 //         "Validation Result:",
 //         isRelevantScrap ? "Relevant Scrap" : "Not Relevant Scrap"
 //       );
@@ -1028,6 +1028,7 @@ import { serverTimestamp } from "firebase/firestore";
 // import { findNearestScrapersWithGamini } from "../../../utils/firestoreUtils";
 import { fetchNearbyScrapersWithGamini } from "../../../utils/gaminiUtils"; // Create and store Gamini-related logic here
 import LoadingSpinner from "../../../components/LoadingSpinner";
+import { log } from "../../../utils/log";
 import axios from "axios";
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
@@ -1052,7 +1053,7 @@ const ScrapManagement = () => {
     const fullAddress = `${address}, ${city}, ${state}`;
 
     try {
-      console.log("Validating full address:", fullAddress);
+      log("Validating full address:", fullAddress);
 
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json`,
@@ -1064,7 +1065,7 @@ const ScrapManagement = () => {
         }
       );
 
-      console.log("Maps API Response:", response.data);
+      log("Maps API Response:", response.data);
 
       const results = response.data.results;
 
@@ -1080,7 +1081,7 @@ const ScrapManagement = () => {
             formatted_address.toLowerCase().includes(state.toLowerCase());
 
           if (isAddressValid) {
-            console.log("Valid address found:", formatted_address);
+            log("Valid address found:", formatted_address);
             return true;
           }
         }
@@ -1319,7 +1320,7 @@ const ScrapManagement = () => {
 
       const result = await response.json();
 
-      console.log("IDX API Response:", result);
+      log("IDX API Response:", result);
 
       // Ensure the response structure is correct
       if (!result.candidates || result.candidates.length === 0) {
@@ -1330,11 +1331,11 @@ const ScrapManagement = () => {
       // Extract the response text
       const candidateText =
         result.candidates[0]?.content?.parts?.[0]?.text?.trim();
-      console.log("Candidate Text:", candidateText);
+      log("Candidate Text:", candidateText);
 
       // Match the candidate text to expected values
       const isRelevantScrap = candidateText === "Relevant Scrap";
-      console.log(
+      log(
         "Validation Result:",
         isRelevantScrap ? "Relevant Scrap" : "Not Relevant Scrap"
       );
@@ -1365,7 +1366,7 @@ const ScrapManagement = () => {
           formData.scrapType
         );
 
-        console.log(
+        log(
           "Validation Result:",
           isValid ? "Relevant Scrap" : "Not Relevant Scrap"
         );

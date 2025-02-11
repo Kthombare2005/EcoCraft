@@ -32,6 +32,7 @@ import {
 } from "chart.js";
 import { setDoc } from "firebase/firestore"; // Import Firestore setDoc function
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { log } from "../../../utils/log";
 
 // Register Chart.js components
 ChartJS.register(
@@ -85,7 +86,7 @@ const SellerDashboard = () => {
 
   const fetchScrapRates = async () => {
     try {
-      console.log("Checking if scrap rates need to be updated...");
+      log("Checking if scrap rates need to be updated...");
   
       const ratesDocRef = doc(db, "scrapRates", "latest");
       const existingDoc = await getDoc(ratesDocRef);
@@ -93,11 +94,11 @@ const SellerDashboard = () => {
   
       // 🔹 If rates already exist and are from today, do NOT update
       if (existingDoc.exists() && existingDoc.data().lastUpdated === currentDate) {
-        console.log("Scrap rates are already updated for today. Skipping fetch.");
+        log("Scrap rates are already updated for today. Skipping fetch.");
         return;
       }
   
-      console.log("Fetching new scrap rates for today...");
+      log("Fetching new scrap rates for today...");
   
       const prompt = `Provide the latest scrap material rates specifically for Indore, Madhya Pradesh, India, covering materials such as iron, aluminum, copper, brass, plastic, paper, glass, electronic waste, rubber, and steel.
       Ensure the response is in strict JSON format with a key 'scrap_rates_india' containing a 'rates' object where each material is a key.
@@ -106,7 +107,7 @@ const SellerDashboard = () => {
       const result = await model.generateContent(prompt);
   
       let rawText = result.response.text().trim();
-      console.log("Raw AI Response:", rawText);
+      log("Raw AI Response:", rawText);
   
       // Remove unwanted formatting (backticks, markdown)
       rawText = rawText.replace(/```json|```/g, "").trim();
@@ -142,14 +143,14 @@ const SellerDashboard = () => {
         return { material, price };
       });
   
-      console.log("Updated Scrap Rates:", scrapRates);
+      log("Updated Scrap Rates:", scrapRates);
   
       // ✅ Store updated rates in Firestore with today's date
       await setDoc(ratesDocRef, { rates: scrapRates, lastUpdated: currentDate });
   
       // ✅ Update state to reflect new rates
       setScrapRates(scrapRates);
-      console.log("Scrap rates updated successfully!");
+      log("Scrap rates updated successfully!");
     } catch (error) {
       console.error("Error fetching scrap rates:", error);
     }
@@ -179,7 +180,7 @@ const SellerDashboard = () => {
   
       const timeUntilMidnight = nextMidnight - now;
   
-      console.log(`Next scrap rate update scheduled in ${timeUntilMidnight / 1000 / 60} minutes`);
+      log(`Next scrap rate update scheduled in ${timeUntilMidnight / 1000 / 60} minutes`);
   
       setTimeout(() => {
         fetchScrapRates(); // Fetch new rates at 12 AM
