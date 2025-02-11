@@ -1559,9 +1559,19 @@ const ScrapManagement = () => {
                   <LoadingSpinner />
                 ) : (
                   <>
-                    <Typography variant="h6">
-                      Scrap Name: {selectedScrap.scrapName}
-                    </Typography>
+<Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold", // Bold for Scrap Name
+            color: "#004080", // Optional color
+            marginBottom: "10px",
+            fontFamily: "'Ubuntu', sans-serif",
+            fontSize: "1.2rem"
+          }}
+        >
+          Scrap Name: {selectedScrap.scrapName}
+        </Typography>
+
                     <Typography>Type: {selectedScrap.scrapType}</Typography>
                     <Typography>
                       Weight: {selectedScrap.weight} {selectedScrap.unit}
@@ -1588,29 +1598,63 @@ const ScrapManagement = () => {
                         <Box
                           key={index}
                           sx={{
-                            padding: "10px",
+                            padding: "15px",
                             border: "1px solid #ccc",
-                            borderRadius: "8px",
+                            borderRadius: "12px",
                             backgroundColor: "#f9f9f9",
-                            marginBottom: "10px",
+                            marginBottom: "15px",
+                            fontFamily: "'Ubuntu', sans-serif", // Apply Ubuntu font
+                            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)", // Optional shadow for better appearance
                           }}
                         >
+                          {/* Scrap Name */}
                           <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: "bold" }}
+                            variant="h6" // Larger font size for Scrap Name
+                            sx={{
+                              fontWeight: "700", // Extra bold
+                              color: "#004080", // Distinct color for Scrap Name
+                              fontFamily: "'Ubuntu', sans-serif",
+                              marginBottom: "10px",
+                            }}
                           >
                             {scraper.name}
                           </Typography>
-                          <Typography>📍 {scraper.shop_address}</Typography>
-                          <Typography>
+
+                          {/* Address */}
+                          <Typography
+                            sx={{
+                              marginTop: "5px",
+                              fontFamily: "'Ubuntu', sans-serif",
+                              fontSize: "0.9rem", // Slightly smaller font size for other details
+                              color: "#555",
+                            }}
+                          >
+                            📍 {scraper.shop_address}
+                          </Typography>
+
+                          {/* Contact Number */}
+                          <Typography
+                            sx={{
+                              marginTop: "5px",
+                              fontFamily: "'Ubuntu', sans-serif",
+                              fontSize: "0.9rem",
+                              color: "#555",
+                            }}
+                          >
                             📞 {scraper.contact_number || "N/A"}
                           </Typography>
+
+                          {/* Call Button */}
                           {scraper.contact_number && (
                             <Button
                               variant="contained"
                               color="primary"
                               href={`tel:${scraper.contact_number}`}
-                              sx={{ marginTop: "5px" }}
+                              sx={{
+                                marginTop: "10px",
+                                fontFamily: "'Ubuntu', sans-serif",
+                                fontWeight: "600", // Semi-bold for button text
+                              }}
                             >
                               Call Now
                             </Button>
@@ -1618,7 +1662,14 @@ const ScrapManagement = () => {
                         </Box>
                       ))
                     ) : (
-                      <Typography sx={{ color: "gray", fontStyle: "italic" }}>
+                      <Typography
+                        sx={{
+                          textAlign: "center",
+                          fontFamily: "'Ubuntu', sans-serif",
+                          fontStyle: "italic",
+                          color: "gray",
+                        }}
+                      >
                         No nearby scrapers found.
                       </Typography>
                     )}
