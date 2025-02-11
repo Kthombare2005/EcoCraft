@@ -82,24 +82,36 @@ const SellerDashboard = () => {
     }
   };
 
+
   const fetchScrapRates = async () => {
     try {
-      console.log("Fetching scrap rates from Gamini API...");
+      console.log("Checking if scrap rates need to be updated...");
+  
+      const ratesDocRef = doc(db, "scrapRates", "latest");
+      const existingDoc = await getDoc(ratesDocRef);
+      const currentDate = new Date().toISOString().split("T")[0]; // Get today's date (YYYY-MM-DD)
+  
+      // 🔹 If rates already exist and are from today, do NOT update
+      if (existingDoc.exists() && existingDoc.data().lastUpdated === currentDate) {
+        console.log("Scrap rates are already updated for today. Skipping fetch.");
+        return;
+      }
+  
+      console.log("Fetching new scrap rates for today...");
   
       const prompt = `Provide the latest scrap material rates specifically for Indore, Madhya Pradesh, India, covering materials such as iron, aluminum, copper, brass, plastic, paper, glass, electronic waste, rubber, and steel.
-Ensure that the response is in strict JSON format with a key 'scrap_rates_india' containing a 'rates' object where each material is a key.
-Each price value must strictly follow the format: '₹min - ₹max/kg' (without extra text, disclaimers, or descriptions).
-Only include the latest market-based price range without additional explanations or introductions.".`;
+      Ensure the response is in strict JSON format with a key 'scrap_rates_india' containing a 'rates' object where each material is a key.
+      Each price value must strictly follow the format: '₹min - ₹max/kg' (without extra text, disclaimers, or descriptions).`;
   
       const result = await model.generateContent(prompt);
   
       let rawText = result.response.text().trim();
       console.log("Raw AI Response:", rawText);
   
-      // 🔹 Remove unwanted formatting (backticks, markdown)
+      // Remove unwanted formatting (backticks, markdown)
       rawText = rawText.replace(/```json|```/g, "").trim();
   
-      // ✅ Parse JSON safely
+      // Parse JSON safely
       let parsedData;
       try {
         parsedData = JSON.parse(rawText);
@@ -113,7 +125,7 @@ Only include the latest market-based price range without additional explanations
         return;
       }
   
-      // ✅ Convert "rates" object into an array, properly extracting values
+      // Convert "rates" object into an array, extracting numeric values
       let scrapRates = Object.entries(parsedData.scrap_rates_india.rates).map(([key, value]) => {
         let material = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize first letter
         let priceRange = value.match(/\d+/g); // Extract only numeric values
@@ -122,42 +134,34 @@ Only include the latest market-based price range without additional explanations
         if (priceRange && priceRange.length >= 2) {
           const min = Number(priceRange[0]);
           const max = Number(priceRange[1]);
-          price = ((min + max) / 2).toFixed(2); // ✅ Compute average price
+          price = ((min + max) / 2).toFixed(2); // Compute average price
         } else if (priceRange && priceRange.length === 1) {
-          price = Number(priceRange[0]).toFixed(2); // ✅ Use single value if no range
+          price = Number(priceRange[0]).toFixed(2); // Use single value if no range
         }
   
         return { material, price };
       });
   
-      console.log("Processed Scrap Rates:", scrapRates);
+      console.log("Updated Scrap Rates:", scrapRates);
   
-      // 🔹 Fetch existing data from Firestore to avoid redundant writes
-      const ratesDocRef = doc(db, "scrapRates", "latest");
-      const existingDoc = await getDoc(ratesDocRef);
-  
-      if (existingDoc.exists() && JSON.stringify(existingDoc.data().rates) === JSON.stringify(scrapRates)) {
-        console.log("No changes in scrap rates, skipping Firestore update.");
-        return;
-      }
-  
-      // ✅ Store updated rates in Firestore with a timestamp
-      await setDoc(ratesDocRef, { rates: scrapRates, lastUpdated: new Date().toISOString() });
+      // ✅ Store updated rates in Firestore with today's date
+      await setDoc(ratesDocRef, { rates: scrapRates, lastUpdated: currentDate });
   
       // ✅ Update state to reflect new rates
       setScrapRates(scrapRates);
-      console.log("Updated Scrap Rates:", scrapRates);
+      console.log("Scrap rates updated successfully!");
     } catch (error) {
       console.error("Error fetching scrap rates:", error);
     }
   };
-
+  
+  
   useEffect(() => {
-    // Call fetchScrapRates when the component loads
+    // Fetch rates initially when the component loads
     fetchScrapRates();
-
+  
     const ratesDocRef = doc(db, "scrapRates", "latest");
-
+  
     // Listen for real-time updates from Firestore
     const unsubscribe = onSnapshot(ratesDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -166,9 +170,29 @@ Only include the latest market-based price range without additional explanations
         console.error("Scrap rates document not found in Firestore.");
       }
     });
-
-    return () => unsubscribe(); // Cleanup function
-  }, []);
+  
+    // ✅ Schedule automatic updates at 12 AM
+    const scheduleMidnightUpdate = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setHours(24, 0, 0, 0); // Set time to next 12 AM
+  
+      const timeUntilMidnight = nextMidnight - now;
+  
+      console.log(`Next scrap rate update scheduled in ${timeUntilMidnight / 1000 / 60} minutes`);
+  
+      setTimeout(() => {
+        fetchScrapRates(); // Fetch new rates at 12 AM
+        scheduleMidnightUpdate(); // Reschedule for the next midnight
+      }, timeUntilMidnight);
+    };
+  
+    scheduleMidnightUpdate(); // Start the scheduler
+  
+    // ✅ Cleanup function to prevent memory leaks
+    return () => unsubscribe();
+  }, []); // No dependencies needed, warning is resolved
+  
 
   // const extractScrapRates = (text) => {
   //   const scrapRates = [];
