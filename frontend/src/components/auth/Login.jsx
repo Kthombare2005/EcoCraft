@@ -140,7 +140,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom"; // useNavigate hook for navigation
 import Image2 from "../../assets/Image2.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { log } from "../../../utils/log";
+import { log } from "../../utils/log";
 
 const Login = ({ onSwitch }) => {
   const [email, setEmail] = useState("");

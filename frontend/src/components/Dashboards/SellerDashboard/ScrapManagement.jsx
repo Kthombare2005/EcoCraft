@@ -1048,6 +1048,45 @@ const ScrapManagement = () => {
   const [loading, setLoading] = useState(false);
   // const [addressError, setAddressError] = useState("");
 
+  const schedulePickup = async (scraper) => {
+    if (!selectedScrap) {
+      alert("No scrap selected for pickup.");
+      return;
+    }
+  
+    if (!scraper?.id) {
+      console.error("Scraper ID missing. Ensure Firestore document ID is used.", scraper);
+      alert("Scraper data is invalid. Please try again.");
+      return;
+    }
+  
+    try {
+      const pickupData = {
+        scrapId: selectedScrap.id || "N/A",
+        scraperId: scraper.id, // Firestore ID now available
+        userId: auth.currentUser?.uid || "Unknown User",
+        scrapName: selectedScrap.scrapName || "Unknown Scrap",
+        address: selectedScrap.address || "No Address",
+        city: selectedScrap.city || "No City",
+        state: selectedScrap.state || "No State",
+        weight: selectedScrap.weight || "N/A",
+        unit: selectedScrap.unit || "N/A",
+        price: selectedScrap.price || "N/A",
+        status: "Pending",
+        createdOn: serverTimestamp(),
+      };
+  
+      await addDoc(collection(db, "pickupRequests"), pickupData);
+      alert(`Pickup request successfully sent to ${scraper.name}!`);
+    } catch (error) {
+      console.error("Error scheduling pickup:", error);
+      alert("Failed to schedule pickup. Please try again.");
+    }
+  };
+  
+  
+  
+
   const validateAddress = async (address, city, state) => {
     const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M"; // Replace with your actual API key
     const fullAddress = `${address}, ${city}, ${state}`;
@@ -1560,18 +1599,18 @@ const ScrapManagement = () => {
                   <LoadingSpinner />
                 ) : (
                   <>
-<Typography
-          variant="h6"
-          sx={{
-            fontWeight: "bold", // Bold for Scrap Name
-            color: "#004080", // Optional color
-            marginBottom: "10px",
-            fontFamily: "'Ubuntu', sans-serif",
-            fontSize: "1.2rem"
-          }}
-        >
-          Scrap Name: {selectedScrap.scrapName}
-        </Typography>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: "bold", // Bold for Scrap Name
+                        color: "#004080", // Optional color
+                        marginBottom: "10px",
+                        fontFamily: "'Ubuntu', sans-serif",
+                        fontSize: "1.2rem",
+                      }}
+                    >
+                      Scrap Name: {selectedScrap.scrapName}
+                    </Typography>
 
                     <Typography>Type: {selectedScrap.scrapType}</Typography>
                     <Typography>
@@ -1604,36 +1643,31 @@ const ScrapManagement = () => {
                             borderRadius: "12px",
                             backgroundColor: "#f9f9f9",
                             marginBottom: "15px",
-                            fontFamily: "'Ubuntu', sans-serif", // Apply Ubuntu font
-                            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)", // Optional shadow for better appearance
+                            fontFamily: "'Ubuntu', sans-serif",
+                            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
                           }}
                         >
-                          {/* Scrap Name */}
                           <Typography
-                            variant="h6" // Larger font size for Scrap Name
+                            variant="h6"
                             sx={{
-                              fontWeight: "700", // Extra bold
-                              color: "#004080", // Distinct color for Scrap Name
+                              fontWeight: "700",
+                              color: "#004080",
                               fontFamily: "'Ubuntu', sans-serif",
                               marginBottom: "10px",
                             }}
                           >
                             {scraper.name}
                           </Typography>
-
-                          {/* Address */}
                           <Typography
                             sx={{
                               marginTop: "5px",
                               fontFamily: "'Ubuntu', sans-serif",
-                              fontSize: "0.9rem", // Slightly smaller font size for other details
+                              fontSize: "0.9rem",
                               color: "#555",
                             }}
                           >
                             📍 {scraper.shop_address}
                           </Typography>
-
-                          {/* Contact Number */}
                           <Typography
                             sx={{
                               marginTop: "5px",
@@ -1644,8 +1678,6 @@ const ScrapManagement = () => {
                           >
                             📞 {scraper.contact_number || "N/A"}
                           </Typography>
-
-                          {/* Call Button */}
                           {scraper.contact_number && (
                             <Button
                               variant="contained"
@@ -1654,12 +1686,25 @@ const ScrapManagement = () => {
                               sx={{
                                 marginTop: "10px",
                                 fontFamily: "'Ubuntu', sans-serif",
-                                fontWeight: "600", // Semi-bold for button text
+                                fontWeight: "600",
+                                marginRight: "10px",
                               }}
                             >
                               Call Now
                             </Button>
                           )}
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            sx={{
+                              marginTop: "10px",
+                              fontFamily: "'Ubuntu', sans-serif",
+                              fontWeight: "600",
+                            }}
+                            onClick={() => schedulePickup(scraper)}
+                          >
+                            Schedule a Pickup
+                          </Button>
                         </Box>
                       ))
                     ) : (

@@ -198,14 +198,12 @@
 
 // Import Firebase modules
 // Import Firebase modules
-import { db } from "../firebaseConfig"; // Update path if necessary
-import { doc, getDoc } from "firebase/firestore"; // Import Firestore methods
+import { db } from "../firebaseConfig"; 
+import { collection, getDocs, doc, getDoc } from "firebase/firestore"; 
 import { log } from "./log";
-
-// Import Axios for API calls
 import axios from "axios";
 
-// Define Gamini API constants
+// Gamini API Constants
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GAMINI_API_KEY}`;
 
@@ -268,48 +266,68 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
       },
     });
 
-    const candidateText = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim();
-    const sanitizedText = candidateText.replace(/```json|```/g, "").trim();
+    const candidateText = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const sanitizedText = candidateText?.replace(/```json|```/g, "").trim() || "[]";
 
     let scrapersList = [];
     try {
       scrapersList = JSON.parse(sanitizedText);
       if (!Array.isArray(scrapersList)) {
         console.error("Parsed data is not an array:", scrapersList);
-        return [];
+        scrapersList = [];
       }
     } catch (jsonError) {
       console.error("Error parsing Gamini JSON response:", jsonError);
-      return [];
+      scrapersList = [];
     }
+
+    // Fetch scrapers from Firestore and include their document ID
+    const scraperQuery = await getDocs(collection(db, "users")); // Fetch all users
+    const firestoreScrapers = scraperQuery.docs
+      .filter((doc) => doc.data().accountType === "scraper") // Ensure only scrapers
+      .map((doc) => ({
+        id: doc.id, // Assign Firestore document ID as scraperId
+        ...doc.data(),
+      }));
+
+    // Merge Firestore scrapers with Gamini API results if address matches
+    scrapersList = scrapersList.map((scraper) => {
+      const firestoreScraper = firestoreScrapers.find((fs) => fs.shop_address === scraper.shop_address);
+      return {
+        id: firestoreScraper?.id || null, // Assign Firestore ID if found
+        ...scraper,
+      };
+    });
 
     // Fetch "demoscraper" from Firebase
     const demoScraperRef = doc(db, "users", "XJuY6X93iFP1pKMBPnjRS6Eo7gj1"); // Use the exact document ID
     const demoScraperSnap = await getDoc(demoScraperRef);
 
     if (demoScraperSnap.exists()) {
-      log("demoscraper data:", demoScraperSnap.data()); // Add this log
+      log("demoscraper data:", demoScraperSnap.data());
       const demoScraper = {
-        name: demoScraperSnap.data().name || "demoscraper",
+        id: demoScraperSnap.id, // Assign Firestore ID
+        name: demoScraperSnap.data().name || "Demoscraper",
         shop_address: demoScraperSnap.data().shop_address || "Demo Address",
         contact_number: demoScraperSnap.data().ContactNumber || "N/A",
       };
 
       // Ensure "demoscraper" is not duplicated
-      if (!scrapersList.some(scraper => scraper.name === demoScraper.name)) {
+      if (!scrapersList.some((scraper) => scraper.id === demoScraper.id)) {
         scrapersList.unshift(demoScraper); // Add "demoscraper" at the top
       }
     } else {
-      console.warn("demoscraper account not found in Firebase."); // Log if not found
+      console.warn("demoscraper account not found in Firebase.");
     }
 
-    log("Final Nearby Scrapers List (with demoscraper):", scrapersList);
+    log("Final Nearby Scrapers List (with Firestore IDs & demoscraper):", scrapersList);
     return scrapersList;
   } catch (error) {
     console.error("Error fetching nearby scrapers:", error);
     return [];
   }
 };
+
 
 
 

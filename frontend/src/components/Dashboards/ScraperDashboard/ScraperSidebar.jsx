@@ -11,7 +11,7 @@ import {
   Box,
   useMediaQuery,
 } from "@mui/material";
-import { Home, DirectionsCar, History, AccountCircle, ExitToApp, Menu } from "@mui/icons-material";
+import { Home, Assignment, LocalShipping, CheckCircle, Map, AccountCircle, ExitToApp, Menu } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth, db, onAuthStateChanged } from "../../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
@@ -55,11 +55,12 @@ const ScraperSidebar = () => {
     navigate("/login");
   };
 
-  // ✅ Updated menu for SCRAPER DASHBOARD
   const menuItems = [
-    { text: "Home", icon: <Home />, path: "/dashboard/scraper" },
-    { text: "Pickup Requests", icon: <DirectionsCar />, path: "/dashboard/scraper/pickups" },
-    { text: "Pickup History", icon: <History />, path: "/dashboard/scraper/history" },
+    { text: "Dashboard", icon: <Home />, path: "/dashboard/scraper" },
+    { text: "Available Requests", icon: <Assignment />, path: "/dashboard/scraper/requests" },
+    { text: "Accepted Requests", icon: <LocalShipping />, path: "/dashboard/scraper/accepted" },
+    { text: "Completed Requests", icon: <CheckCircle />, path: "/dashboard/scraper/completed" },
+    { text: "Live Map", icon: <Map />, path: "/dashboard/scraper/map" },
     { text: "Profile", icon: <AccountCircle />, path: "/profile" },
   ];
 
@@ -73,10 +74,10 @@ const ScraperSidebar = () => {
         "& .MuiDrawer-paper": {
           width: open ? 250 : 80,
           boxSizing: "border-box",
-          background: "linear-gradient(45deg, #E0F7FA, #80DEEA, #4DD0E1, #26C6DA, #00ACC1)",
+          background: "linear-gradient(45deg, #E3F2FD, #BBDEFB, #90CAF9, #64B5F6, #42A5F5)",
           backgroundSize: "400% 400%",
           animation: "gradientMove 8s infinite alternate",
-          color: "#004D40",
+          color: "#004080",
           height: "100vh",
           display: "flex",
           flexDirection: "column",
@@ -94,28 +95,30 @@ const ScraperSidebar = () => {
         `}
       </style>
 
+      {/* Sidebar Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px" }}>
         {open && (
           <Typography
             variant="h6"
             sx={{
-              color: "#004D40",
+              color: "#004080",
               fontFamily: "Arvo, serif",
               fontSize: "24px",
               fontWeight: "bold",
               margin: 0,
             }}
           >
-            EcoCraft - Scraper
+            EcoCraft-Scraper
           </Typography>
         )}
-        <IconButton onClick={() => setOpen(!open)} sx={{ color: "#004D40" }}>
+        <IconButton onClick={() => setOpen(!open)} sx={{ color: "#004080" }}>
           <Menu />
         </IconButton>
       </div>
 
-      <Divider sx={{ backgroundColor: "rgba(0, 77, 64, 0.2)" }} />
+      <Divider sx={{ backgroundColor: "rgba(0, 64, 128, 0.2)" }} />
 
+      {/* Navigation Menu */}
       <List sx={{ flexGrow: 1 }}>
         {menuItems.map((item, index) => (
           <ListItem
@@ -123,9 +126,9 @@ const ScraperSidebar = () => {
             key={index}
             onClick={() => navigate(item.path)}
             sx={{
-              "&:hover": { backgroundColor: "rgba(0, 77, 64, 0.1)" },
-              backgroundColor: location.pathname === item.path ? "#26C6DA" : "transparent",
-              color: location.pathname === item.path ? "white" : "#004D40",
+              "&:hover": { backgroundColor: "rgba(0, 64, 128, 0.1)" },
+              backgroundColor: location.pathname === item.path ? "#42A5F5" : "transparent",
+              color: location.pathname === item.path ? "white" : "#004080",
               display: "flex",
               flexDirection: open ? "row" : "column",
               alignItems: "center",
@@ -136,7 +139,7 @@ const ScraperSidebar = () => {
           >
             <ListItemIcon
               sx={{
-                color: location.pathname === item.path ? "white" : "#004D40",
+                color: location.pathname === item.path ? "white" : "#004080",
                 minWidth: open ? "40px" : "100%",
                 display: "flex",
                 justifyContent: "center",
@@ -168,17 +171,19 @@ const ScraperSidebar = () => {
         ))}
       </List>
 
+      {/* User Profile */}
       {user && open && (
         <Box sx={{ padding: "16px", textAlign: "center", fontFamily: "Roboto Slab, serif" }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: "bold", color: "#004D40" }}>
-            {user.name || "Scraper"}
+          <Typography variant="subtitle1" sx={{ fontWeight: "bold", color: "#004080" }}>
+            {user.name || "User"}
           </Typography>
-          <Typography variant="body2" sx={{ color: "#004D40", marginTop: "4px" }}>
+          <Typography variant="body2" sx={{ color: "#004080", marginTop: "4px" }}>
             {user.email || "No Email Provided"}
           </Typography>
         </Box>
       )}
 
+      {/* Logout Button */}
       <Box sx={{ padding: "16px" }}>
         <ListItem
           button
