@@ -201,6 +201,7 @@ import SellerDashboard from "./components/Dashboards/SellerDashboard/SellerDashb
 import ScraperDashboard from "./components/Dashboards/ScraperDashboard/ScraperDashboard"; // ✅ Import Scraper Dashboard
 import Profile from "./components/Dashboards/Profile";
 import ScrapManagement from "./components/Dashboards/SellerDashboard/ScrapManagement";
+import AvailableRequests from "./components/Dashboards/ScraperDashboard/AvailableRequests";
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const [user, setUser] = useState(null);
@@ -276,6 +277,8 @@ const App = () => {
 
       {/* ✅ Scraper Dashboard Route */}
       <Route path="/dashboard/scraper" element={<ProtectedRoute element={<ScraperDashboard />} allowedRoles={["scraper"]} />} />
+      <Route path="/dashboard/scraper/requests" element={<AvailableRequests />} />
+
 
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

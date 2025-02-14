@@ -166,18 +166,30 @@
 
 // export default ScraperDashboard;
 
-
-
-
-
 import { useEffect, useState } from "react";
-import { Grid, Card, CardContent, Typography, Box, Snackbar, Alert, useMediaQuery } from "@mui/material";
+import {
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Snackbar,
+  Alert,
+  useMediaQuery,
+} from "@mui/material";
 import Sidebar from "./ScraperSidebar";
 import { auth, db } from "../../../firebaseConfig";
-import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+} from "firebase/firestore";
 import { motion } from "framer-motion";
 import "animate.css";
-
+import PageLoader from "../../../components/PageLoader";
 const cardVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -186,14 +198,21 @@ const cardVariants = {
 
 const ScraperDashboard = () => {
   const [user, setUser] = useState(null);
-  const [metrics, setMetrics] = useState({ totalScrapCollected: 0, scheduledPickups: 0, activeRequests: 0 });
+  const [metrics, setMetrics] = useState({
+    totalScrapCollected: 0,
+    scheduledPickups: 0,
+    activeRequests: 0,
+  });
   const [recentActivity, setRecentActivity] = useState([]);
   const [newPickup, setNewPickup] = useState(null); // New Pickup Notification
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const isSmallScreen = useMediaQuery("(max-width: 600px)");
+  const [loading, setLoading] = useState(true); // Page loading state
 
   useEffect(() => {
     setIsSidebarOpen(!isSmallScreen);
+    setLoading(true); // Start loading animation
+    setTimeout(() => setLoading(false), 800); // Simulate load delay
   }, [isSmallScreen]);
 
   const fetchUserData = async (uid) => {
@@ -209,14 +228,52 @@ const ScraperDashboard = () => {
 
   const fetchScraperMetrics = async (uid) => {
     try {
-      const q = query(collection(db, "pickupRequests"), where("scraperId", "==", uid));
-      onSnapshot(q, (snapshot) => {
-        const requests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const q = query(
+        collection(db, "pickupRequests"),
+        where("scraperId", "==", uid)
+      );
+      onSnapshot(q, async (snapshot) => {
+        const requests = await Promise.all(
+          snapshot.docs.map(async (document) => {
+            const pickupData = { id: document.id, ...document.data() };
+            let sellerName = "Unknown Seller";
+
+            // Fetch seller details using `userId`
+            if (pickupData.userId) {
+              try {
+                const sellerDocRef = doc(db, "users", pickupData.userId); // Corrected Firestore reference
+                const sellerDoc = await getDoc(sellerDocRef);
+                if (sellerDoc.exists()) {
+                  sellerName = sellerDoc.data().name || "Unknown Seller";
+                }
+              } catch (error) {
+                console.error("Error fetching seller details:", error);
+              }
+            }
+
+            return {
+              ...pickupData,
+              sellerName,
+            };
+          })
+        );
+
         setMetrics({
           totalScrapCollected: Math.floor(Math.random() * 1000), // Replace with Firestore data
           scheduledPickups: requests.length,
-          activeRequests: requests.filter((req) => req.status === "Pending").length,
+          activeRequests: requests.filter((req) => req.status === "Pending")
+            .length,
         });
+
+        setRecentActivity(
+          requests.map((req) => ({
+            message: `New pickup request from ${req.sellerName} for scrap: ${
+              req.scrapName || "Unknown"
+            }`,
+            color: "blue",
+            time: "Just now",
+          }))
+        );
       });
     } catch (error) {
       console.error("Error fetching scraper metrics:", error);
@@ -225,14 +282,39 @@ const ScraperDashboard = () => {
 
   const fetchRecentActivity = async (uid) => {
     try {
-      const q = query(collection(db, "pickupRequests"), where("scraperId", "==", uid));
-      onSnapshot(q, (snapshot) => {
-        const activities = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          message: `New pickup request for Scrap ID: ${doc.data().scrapId}`,
-          color: "blue",
-          time: "Just now",
-        }));
+      const q = query(
+        collection(db, "pickupRequests"),
+        where("scraperId", "==", uid)
+      );
+      onSnapshot(q, async (snapshot) => {
+        const activities = await Promise.all(
+          snapshot.docs.map(async (document) => {
+            const pickupData = { id: document.id, ...document.data() };
+            let sellerName = "Unknown Seller";
+
+            // Fetch seller details using `userId`
+            if (pickupData.userId) {
+              try {
+                const sellerDocRef = doc(db, "users", pickupData.userId); // Corrected Firestore reference
+                const sellerDoc = await getDoc(sellerDocRef);
+                if (sellerDoc.exists()) {
+                  sellerName = sellerDoc.data().name || "Unknown Seller";
+                }
+              } catch (error) {
+                console.error("Error fetching seller details:", error);
+              }
+            }
+
+            return {
+              id: document.id,
+              message: `New pickup request from ${sellerName} for scrap: ${
+                pickupData.scrapName || "Unknown"
+              }`,
+              color: "blue",
+              time: "Just now",
+            };
+          })
+        );
 
         if (activities.length > 0) {
           setNewPickup(activities[activities.length - 1]); // Show notification
@@ -258,14 +340,26 @@ const ScraperDashboard = () => {
   }, []);
 
   return (
-    <Box className="animate__animated animate__fadeIn" sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <>
+    {loading && <PageLoader />}
+    <Box
+      className="animate__animated animate__fadeIn"
+      sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}
+    >
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
 
       <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
         <Typography
           variant="h4"
           className="animate__animated animate__fadeInDown"
-          sx={{ marginBottom: "24px", fontFamily: "Arvo, serif", color: "#004080" }}
+          sx={{
+            marginBottom: "24px",
+            fontFamily: "Arvo, serif",
+            color: "#004080",
+          }}
         >
           Welcome, {user?.name || "Scraper"} to Scraper Dashboard
         </Typography>
@@ -273,23 +367,58 @@ const ScraperDashboard = () => {
         {/* Metrics Cards */}
         <Grid container spacing={3}>
           {[
-            { label: "Total Scrap Collected", value: `${metrics.totalScrapCollected} kg`, icon: "♻️", color: "#66BB6A" },
-            { label: "Scheduled Pickups", value: metrics.scheduledPickups, icon: "📅", color: "#29B6F6" },
-            { label: "Active Requests", value: metrics.activeRequests, icon: "📋", color: "#8E24AA" },
+            {
+              label: "Total Scrap Collected",
+              value: `${metrics.totalScrapCollected} kg`,
+              icon: "♻️",
+              color: "#66BB6A",
+            },
+            {
+              label: "Scheduled Pickups",
+              value: metrics.scheduledPickups,
+              icon: "📅",
+              color: "#29B6F6",
+            },
+            {
+              label: "Active Requests",
+              value: metrics.activeRequests,
+              icon: "📋",
+              color: "#8E24AA",
+            },
           ].map((card, index) => (
             <Grid item xs={12} sm={4} key={index}>
-              <motion.div variants={cardVariants} initial="initial" animate="animate" whileHover="hover">
-                <Card className="animate__animated animate__zoomIn" sx={{ borderRadius: "12px", backgroundColor: "white" }}>
+              <motion.div
+                variants={cardVariants}
+                initial="initial"
+                animate="animate"
+                whileHover="hover"
+              >
+                <Card
+                  className="animate__animated animate__zoomIn"
+                  sx={{ borderRadius: "12px", backgroundColor: "white" }}
+                >
                   <CardContent>
-                    <Box sx={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-                      <Typography variant="subtitle1" sx={{ color: card.color, marginRight: "12px" }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ color: card.color, marginRight: "12px" }}
+                      >
                         {card.icon}
                       </Typography>
                       <Typography variant="subtitle1" sx={{ color: "#004080" }}>
                         {card.label}
                       </Typography>
                     </Box>
-                    <Typography variant="h4" sx={{ color: "#004080", marginTop: "8px" }}>
+                    <Typography
+                      variant="h4"
+                      sx={{ color: "#004080", marginTop: "8px" }}
+                    >
                       {card.value}
                     </Typography>
                   </CardContent>
@@ -300,12 +429,31 @@ const ScraperDashboard = () => {
         </Grid>
 
         {/* Recent Activity */}
-        <Box sx={{ marginTop: "32px", backgroundColor: "white", borderRadius: "12px", padding: "16px" }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold", marginBottom: "8px", color: "#004080" }}>
+        <Box
+          sx={{
+            marginTop: "32px",
+            backgroundColor: "white",
+            borderRadius: "12px",
+            padding: "16px",
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: "bold", marginBottom: "8px", color: "#004080" }}
+          >
             Recent Activity
           </Typography>
           {recentActivity.map((activity, index) => (
-            <Box key={index} sx={{ padding: "8px 0", borderBottom: index !== recentActivity.length - 1 ? "1px solid #ddd" : "none" }}>
+            <Box
+              key={index}
+              sx={{
+                padding: "8px 0",
+                borderBottom:
+                  index !== recentActivity.length - 1
+                    ? "1px solid #ddd"
+                    : "none",
+              }}
+            >
               <Typography variant="body1">{activity.message}</Typography>
               <Typography variant="body2" sx={{ color: "gray" }}>
                 {activity.time}
@@ -315,11 +463,19 @@ const ScraperDashboard = () => {
         </Box>
 
         {/* Snackbar Notification */}
-        <Snackbar open={!!newPickup} autoHideDuration={5000} onClose={() => setNewPickup(null)}>
-          <Alert severity="info">{newPickup?.message}</Alert>
+        <Snackbar
+          open={!!newPickup}
+          autoHideDuration={5000}
+          onClose={() => setNewPickup(null)}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }} // Set to Top-Right
+        >
+          <Alert severity="info" onClose={() => setNewPickup(null)}>
+            {newPickup?.message || "New pickup request received!"}
+          </Alert>
         </Snackbar>
       </Box>
     </Box>
+    </>
   );
 };
 

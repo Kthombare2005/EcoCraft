@@ -1061,10 +1061,22 @@ const ScrapManagement = () => {
     }
   
     try {
+      // Fetch seller details
+      const userId = auth.currentUser?.uid;
+      let sellerName = "Unknown Seller";
+      if (userId) {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          sellerName = userDoc.data().name || "Unknown Seller";
+        }
+      }
+  
+      // Create pickup request
       const pickupData = {
         scrapId: selectedScrap.id || "N/A",
         scraperId: scraper.id, // Firestore ID now available
-        userId: auth.currentUser?.uid || "Unknown User",
+        userId: userId || "Unknown User",
+        sellerName: sellerName, // Store seller name for easy reference
         scrapName: selectedScrap.scrapName || "Unknown Scrap",
         address: selectedScrap.address || "No Address",
         city: selectedScrap.city || "No City",
@@ -1077,12 +1089,22 @@ const ScrapManagement = () => {
       };
   
       await addDoc(collection(db, "pickupRequests"), pickupData);
+  
+      // Send notification to scraper
+      await addDoc(collection(db, "notifications"), {
+        scraperId: scraper.id, // The recipient of the notification
+        message: `New pickup request from ${sellerName} for scrap: ${selectedScrap.scrapName}`,
+        status: "unread",
+        createdOn: serverTimestamp(),
+      });
+  
       alert(`Pickup request successfully sent to ${scraper.name}!`);
     } catch (error) {
       console.error("Error scheduling pickup:", error);
       alert("Failed to schedule pickup. Please try again.");
     }
   };
+  
   
   
   
@@ -1543,7 +1565,7 @@ const ScrapManagement = () => {
                               alignItems: "center",
                             }}
                           >
-                            <h6
+                            {/* <h6
                               style={{
                                 fontWeight: "bold",
                                 color: "#28a745",
@@ -1551,7 +1573,7 @@ const ScrapManagement = () => {
                               }}
                             >
                               ₹{scrap.price || "N/A"}
-                            </h6>
+                            </h6> */}
                             <a
                               href="#"
                               className="btn"
@@ -1616,7 +1638,7 @@ const ScrapManagement = () => {
                     <Typography>
                       Weight: {selectedScrap.weight} {selectedScrap.unit}
                     </Typography>
-                    <Typography>Price: ₹{selectedScrap.price}</Typography>
+                    {/* <Typography>Price: ₹{selectedScrap.price}</Typography> */}
                     <Typography>
                       Location: {selectedScrap.city}, {selectedScrap.state}
                     </Typography>
