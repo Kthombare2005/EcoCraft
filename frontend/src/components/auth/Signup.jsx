@@ -297,10 +297,97 @@ const Signup = ({ onSwitch }) => {
     setCities(citiesJson[selectedState] || []);
   };
 
+  // const handleSignup = async (e) => {
+  //   e.preventDefault();
+  //   let isValid = true;
+
+  //   const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+  //   if (!emailRegex.test(email)) {
+  //     setEmailError("Please enter a valid Gmail address.");
+  //     isValid = false;
+  //   } else {
+  //     setEmailError("");
+  //   }
+
+  //   const ContactNumberRegex = /^[0-9]{10}$/;
+  //   if (!ContactNumberRegex.test(ContactNumber)) {
+  //     setContactNumberError("Contact number must be 10 digits.");
+  //     isValid = false;
+  //   } else {
+  //     setContactNumberError("");
+  //   }
+
+  //   if (password.length < 6) {
+  //     setPasswordError("Password must be at least 6 characters.");
+  //     isValid = false;
+  //   } else {
+  //     setPasswordError("");
+  //   }
+
+  //   if (password !== confirmPassword) {
+  //     setConfirmPasswordError("Passwords do not match.");
+  //     isValid = false;
+  //   } else {
+  //     setConfirmPasswordError("");
+  //   }
+
+  //   if (accountType === "scraper" && shopAddress.trim() === "") {
+  //     setSignupError("Shop Address is required for scrapers.");
+  //     isValid = false;
+  //   }
+
+  //   if (isValid) {
+  //     try {
+  //       const userCredential = await createUserWithEmailAndPassword(
+  //         auth,
+  //         email,
+  //         password
+  //       );
+  //       const user = userCredential.user;
+  //       const userRef = doc(db, "users", user.uid);
+
+  //       const userData = {
+  //         name,
+  //         email,
+  //         ContactNumber,
+  //         accountType,
+  //       };
+
+  //       if (accountType === "scraper") {
+  //         userData.shopAddress = shopAddress;
+  //       }
+
+  //       await setDoc(userRef, userData);
+
+  //       setSignupSuccess("Signup successful! Redirecting to login...");
+  //       setSignupError("");
+
+  //       log("User data stored in Firestore successfully!");
+
+  //       setTimeout(() => {
+  //         onSwitch("login");
+  //       }, 3000);
+  //     } catch (error) {
+  //       if (error.code === "auth/email-already-in-use") {
+  //         setSignupError("An account with this email already exists.");
+  //       } else {
+  //         setSignupError(
+  //           "An error occurred while signing up. Please try again."
+  //         );
+  //       }
+  //       setSignupSuccess("");
+  //       console.error("Error during signup: ", error);
+  //     }
+  //   }
+  // };
+
+
+
+
   const handleSignup = async (e) => {
     e.preventDefault();
     let isValid = true;
-
+  
     const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (!emailRegex.test(email)) {
       setEmailError("Please enter a valid Gmail address.");
@@ -308,7 +395,7 @@ const Signup = ({ onSwitch }) => {
     } else {
       setEmailError("");
     }
-
+  
     const ContactNumberRegex = /^[0-9]{10}$/;
     if (!ContactNumberRegex.test(ContactNumber)) {
       setContactNumberError("Contact number must be 10 digits.");
@@ -316,26 +403,26 @@ const Signup = ({ onSwitch }) => {
     } else {
       setContactNumberError("");
     }
-
+  
     if (password.length < 6) {
       setPasswordError("Password must be at least 6 characters.");
       isValid = false;
     } else {
       setPasswordError("");
     }
-
+  
     if (password !== confirmPassword) {
       setConfirmPasswordError("Passwords do not match.");
       isValid = false;
     } else {
       setConfirmPasswordError("");
     }
-
+  
     if (accountType === "scraper" && shopAddress.trim() === "") {
       setSignupError("Shop Address is required for scrapers.");
       isValid = false;
     }
-
+  
     if (isValid) {
       try {
         const userCredential = await createUserWithEmailAndPassword(
@@ -345,25 +432,46 @@ const Signup = ({ onSwitch }) => {
         );
         const user = userCredential.user;
         const userRef = doc(db, "users", user.uid);
-
+  
+        // Generate Unique ID based on account type
+        const generateUniqueId = (prefix) => {
+          return `${prefix}${Date.now().toString().slice(-6)}`; // Example: SELL-123456
+        };
+  
+        let userId;
+        switch (accountType) {
+          case "seller":
+            userId = generateUniqueId("SELL-");
+            break;
+          case "scraper":
+            userId = generateUniqueId("SCRP-");
+            break;
+          case "artisan":
+            userId = generateUniqueId("ARTS-");
+            break;
+          default:
+            userId = generateUniqueId("USER-");
+        }
+  
         const userData = {
+          userId, // Store the generated ID
           name,
           email,
           ContactNumber,
           accountType,
         };
-
+  
         if (accountType === "scraper") {
           userData.shopAddress = shopAddress;
         }
-
+  
         await setDoc(userRef, userData);
-
+  
         setSignupSuccess("Signup successful! Redirecting to login...");
         setSignupError("");
-
+  
         log("User data stored in Firestore successfully!");
-
+  
         setTimeout(() => {
           onSwitch("login");
         }, 3000);
@@ -371,15 +479,15 @@ const Signup = ({ onSwitch }) => {
         if (error.code === "auth/email-already-in-use") {
           setSignupError("An account with this email already exists.");
         } else {
-          setSignupError(
-            "An error occurred while signing up. Please try again."
-          );
+          setSignupError("An error occurred while signing up. Please try again.");
         }
         setSignupSuccess("");
         console.error("Error during signup: ", error);
       }
     }
   };
+  
+
 
   return (
     <div className="auth-container">
