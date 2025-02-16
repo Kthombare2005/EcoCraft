@@ -1018,7 +1018,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import Sidebar from "../Sidebar";
 import { db, auth } from "../../../firebaseConfig";
-import { collection, addDoc, doc, getDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import statesJson from "../../../assets/states.json";
 import citiesJson from "../../../assets/cities.json";
@@ -1103,7 +1103,8 @@ const ScrapManagement = () => {
       });
   
       alert(`Pickup request successfully sent to ${scraper.name}!`);
-      fetchScrapListings(); // Refresh scrap listing to reflect new status
+      fetchScrapListingsRealtime();
+ // Refresh scrap listing to reflect new status
     } catch (error) {
       console.error("Error scheduling pickup:", error);
       alert("Failed to schedule pickup. Please try again.");
@@ -1193,7 +1194,8 @@ const ScrapManagement = () => {
       });
 
       handleDialogClose();
-      fetchScrapListings(); // Refresh the scrap listing
+      fetchScrapListingsRealtime();
+ // Refresh the scrap listing
       alert("Scrap listing added successfully!");
     } catch (error) {
       console.error("Error adding scrap listing:", error);
@@ -1228,18 +1230,18 @@ const ScrapManagement = () => {
     setSelectedScrap(null);
   };
 
-  const fetchScrapListings = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "scrapListings"));
-      const listings = querySnapshot.docs.map((doc) => ({
+  const fetchScrapListingsRealtime = () => {
+    const scrapListingsRef = collection(db, "scrapListings");
+  
+    return onSnapshot(scrapListingsRef, (snapshot) => {
+      const listings = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       setScrapListings(listings);
-    } catch (error) {
-      console.error("Error fetching scrap listings:", error);
-    }
+    });
   };
+  
   
 
   const [formData, setFormData] = useState({
@@ -1276,19 +1278,40 @@ const ScrapManagement = () => {
       setIsSmallScreen(window.innerWidth < 600);
     };
     window.addEventListener("resize", handleResize);
-
+  
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         fetchUserData(currentUser.uid);
       }
     });
-    fetchScrapListings();
-
+  
+    // ✅ Real-time listener for scrapListings
+    const unsubscribeScrapListings = fetchScrapListingsRealtime();
+  
+    // ✅ Real-time listener for pickupRequests to update pickupStatus
+    const unsubscribePickupRequests = onSnapshot(collection(db, "pickupRequests"), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const updatedPickup = change.doc.data();
+          setScrapListings((prevListings) =>
+            prevListings.map((scrap) =>
+              scrap.id === updatedPickup.scrapId
+                ? { ...scrap, pickupStatus: updatedPickup.status }
+                : scrap
+            )
+          );
+        }
+      });
+    });
+  
     return () => {
       window.removeEventListener("resize", handleResize);
       unsubscribeAuth();
+      unsubscribeScrapListings();
+      unsubscribePickupRequests();
     };
   }, []);
+  
 
   const fetchUserData = async (uid) => {
     try {

@@ -242,7 +242,7 @@ ProtectedRoute.propTypes = {
 const RedirectToDashboard = () => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -253,13 +253,13 @@ const RedirectToDashboard = () => {
           setUserRole(userDoc.data().accountType); // ✅ Get the role
         }
       }
-      setLoading(false);
+      // setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  // if (loading) return <div>Loading...</div>;
 
   if (!user) return <Navigate to="/" />;
   return userRole === "scraper" ? <Navigate to="/dashboard/scraper" /> : <Navigate to="/dashboard/seller" />;

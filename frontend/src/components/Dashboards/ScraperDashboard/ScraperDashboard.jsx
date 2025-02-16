@@ -190,7 +190,7 @@ import {
 import { motion } from "framer-motion";
 import "animate.css";
 import PageLoader from "../../../components/PageLoader";
-import {getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+import { getDocs, setDoc, serverTimestamp } from "firebase/firestore";
 
 const cardVariants = {
   initial: { opacity: 0, y: 20 },
@@ -289,18 +289,18 @@ const ScraperDashboard = () => {
         where("scraperId", "==", uid),
         where("status", "==", "Pending") // Only fetch pending requests
       );
-  
+
       onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
           console.log("No new pickup requests.");
           return;
         }
-  
+
         const activities = await Promise.all(
           snapshot.docs.map(async (document) => {
             const pickupData = { id: document.id, ...document.data() };
             let sellerName = "Unknown Seller";
-  
+
             // Fetch seller details using `userId`
             if (pickupData.userId) {
               try {
@@ -313,7 +313,7 @@ const ScraperDashboard = () => {
                 console.error("Error fetching seller details:", error);
               }
             }
-  
+
             return {
               id: document.id,
               message: `New pickup request from ${sellerName} for scrap: ${
@@ -324,22 +324,25 @@ const ScraperDashboard = () => {
             };
           })
         );
-  
+
         // 🔥 Fetch Seen Notifications from Firestore
         const seenRef = collection(db, "users", uid, "notifications");
         const seenSnapshot = await getDocs(seenRef);
         const seenRequests = seenSnapshot.docs.map((doc) => doc.id); // Extract IDs
-  
+
         // 🔥 Filter Out Already Seen Requests
         const newNotifications = activities.filter(
           (req) => !seenRequests.includes(req.id)
         );
-  
+
         if (newNotifications.length > 0) {
-          console.log("New Notification:", newNotifications[newNotifications.length - 1]);
-  
+          console.log(
+            "New Notification:",
+            newNotifications[newNotifications.length - 1]
+          );
+
           setNewPickup(newNotifications[newNotifications.length - 1]); // Show latest notification
-  
+
           // 🔥 Mark Notifications as Seen in Firestore
           newNotifications.forEach(async (notif) => {
             await setDoc(doc(db, "users", uid, "notifications", notif.id), {
@@ -348,16 +351,13 @@ const ScraperDashboard = () => {
             });
           });
         }
-  
+
         setRecentActivity(activities);
       });
     } catch (error) {
       console.error("Error fetching recent activity:", error);
     }
   };
-  
-  
-  
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -373,141 +373,143 @@ const ScraperDashboard = () => {
 
   return (
     <>
-    {loading && <PageLoader />}
-    <Box
-      className="animate__animated animate__fadeIn"
-      sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}
-    >
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-      />
+      {loading && <PageLoader />}
+      <Box
+        className="animate__animated animate__fadeIn"
+        sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}
+      >
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
 
-      <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
-        <Typography
-          variant="h4"
-          className="animate__animated animate__fadeInDown"
-          sx={{
-            marginBottom: "24px",
-            fontFamily: "Arvo, serif",
-            color: "#004080",
-          }}
-        >
-          Welcome, {user?.name || "Scraper"} to Scraper Dashboard
-        </Typography>
-
-        {/* Metrics Cards */}
-        <Grid container spacing={3}>
-          {[
-            {
-              label: "Total Scrap Collected",
-              value: `${metrics.totalScrapCollected} kg`,
-              icon: "♻️",
-              color: "#66BB6A",
-            },
-            {
-              label: "Scheduled Pickups",
-              value: metrics.scheduledPickups,
-              icon: "📅",
-              color: "#29B6F6",
-            },
-            {
-              label: "Active Requests",
-              value: metrics.activeRequests,
-              icon: "📋",
-              color: "#8E24AA",
-            },
-          ].map((card, index) => (
-            <Grid item xs={12} sm={4} key={index}>
-              <motion.div
-                variants={cardVariants}
-                initial="initial"
-                animate="animate"
-                whileHover="hover"
-              >
-                <Card
-                  className="animate__animated animate__zoomIn"
-                  sx={{ borderRadius: "12px", backgroundColor: "white" }}
-                >
-                  <CardContent>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ color: card.color, marginRight: "12px" }}
-                      >
-                        {card.icon}
-                      </Typography>
-                      <Typography variant="subtitle1" sx={{ color: "#004080" }}>
-                        {card.label}
-                      </Typography>
-                    </Box>
-                    <Typography
-                      variant="h4"
-                      sx={{ color: "#004080", marginTop: "8px" }}
-                    >
-                      {card.value}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* Recent Activity */}
-        <Box
-          sx={{
-            marginTop: "32px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            padding: "16px",
-          }}
-        >
+        <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
           <Typography
-            variant="h6"
-            sx={{ fontWeight: "bold", marginBottom: "8px", color: "#004080" }}
+            variant="h4"
+            className="animate__animated animate__fadeInDown"
+            sx={{
+              marginBottom: "24px",
+              fontFamily: "Arvo, serif",
+              color: "#004080",
+            }}
           >
-            Recent Activity
+            Welcome, {user?.name || "Scraper"} to Scraper Dashboard
           </Typography>
-          {recentActivity.map((activity, index) => (
-            <Box
-              key={index}
-              sx={{
-                padding: "8px 0",
-                borderBottom:
-                  index !== recentActivity.length - 1
-                    ? "1px solid #ddd"
-                    : "none",
-              }}
+
+          {/* Metrics Cards */}
+          <Grid container spacing={3}>
+            {[
+              {
+                label: "Total Scrap Collected",
+                value: `${metrics.totalScrapCollected} kg`,
+                icon: "♻️",
+                color: "#66BB6A",
+              },
+              {
+                label: "Scheduled Pickups",
+                value: metrics.scheduledPickups,
+                icon: "📅",
+                color: "#29B6F6",
+              },
+              {
+                label: "Active Requests",
+                value: metrics.activeRequests,
+                icon: "📋",
+                color: "#8E24AA",
+              },
+            ].map((card, index) => (
+              <Grid item xs={12} sm={4} key={index}>
+                <motion.div
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  whileHover="hover"
+                >
+                  <Card
+                    className="animate__animated animate__zoomIn"
+                    sx={{ borderRadius: "12px", backgroundColor: "white" }}
+                  >
+                    <CardContent>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ color: card.color, marginRight: "12px" }}
+                        >
+                          {card.icon}
+                        </Typography>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ color: "#004080" }}
+                        >
+                          {card.label}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        variant="h4"
+                        sx={{ color: "#004080", marginTop: "8px" }}
+                      >
+                        {card.value}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Recent Activity */}
+          <Box
+            sx={{
+              marginTop: "32px",
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "16px",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: "bold", marginBottom: "8px", color: "#004080" }}
             >
-              <Typography variant="body1">{activity.message}</Typography>
-              <Typography variant="body2" sx={{ color: "gray" }}>
-                {activity.time}
-              </Typography>
-            </Box>
-          ))}
+              Recent Activity
+            </Typography>
+            {recentActivity.map((activity, index) => (
+              <Box
+                key={index}
+                sx={{
+                  padding: "8px 0",
+                  borderBottom:
+                    index !== recentActivity.length - 1
+                      ? "1px solid #ddd"
+                      : "none",
+                }}
+              >
+                <Typography variant="body1">{activity.message}</Typography>
+                <Typography variant="body2" sx={{ color: "gray" }}>
+                  {activity.time}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Snackbar Notification */}
+          <Snackbar
+            open={!!newPickup}
+            autoHideDuration={5000}
+            onClose={() => setNewPickup(null)}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }} // ✅ Set to Top-Right
+          >
+            <Alert severity="info" onClose={() => setNewPickup(null)}>
+              {newPickup?.message || "New pickup request received!"}
+            </Alert>
+          </Snackbar>
         </Box>
-
-        {/* Snackbar Notification */}
-        <Snackbar
-  open={!!newPickup}
-  autoHideDuration={5000}
-  onClose={() => setNewPickup(null)}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }} // ✅ Set to Top-Right
->
-  <Alert severity="info" onClose={() => setNewPickup(null)}>
-    {newPickup?.message || "New pickup request received!"}
-  </Alert>
-</Snackbar>
-
       </Box>
-    </Box>
     </>
   );
 };
