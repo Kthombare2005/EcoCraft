@@ -63,7 +63,6 @@
 //     { text: "Live Map", icon: <Map />, path: "/dashboard/scraper/map" },
 //     { text: "Profile", icon: <AccountCircle />, path: "/profile" },
 //   ];
-  
 
 //   return (
 //     <Drawer
@@ -216,8 +215,6 @@
 
 // export default ScraperSidebar;
 
-
-
 import { useState } from "react";
 import {
   Drawer,
@@ -233,11 +230,23 @@ import {
   Backdrop,
   CircularProgress,
 } from "@mui/material";
-import { Home, Assignment, LocalShipping, CheckCircle, Map, AccountCircle, ExitToApp, Menu } from "@mui/icons-material";
+import {
+  Home,
+  Assignment,
+  LocalShipping,
+  CheckCircle,
+  Map,
+  AccountCircle,
+  ExitToApp,
+  Menu,
+} from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../../../firebaseConfig";
 import { Badge } from "@mui/material";
 import { useEffect } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../../firebaseConfig"; // Ensure db is imported
+import {   doc, getDocs, setDoc, } from "firebase/firestore";
 
 
 const ScraperSidebar = () => {
@@ -248,29 +257,74 @@ const ScraperSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [scrapRequestsCount, setScrapRequestsCount] = useState(0);
+  // const [acceptedRequestsCount, setAcceptedRequestsCount] = useState(0); // 🔥 Add this line
 
   const handleNavigation = (path) => {
     if (location.pathname !== path) {
-      setLoading(true); 
+      setLoading(true);
       setNextPage(path); // Store the next page to load
 
       setTimeout(() => {
         navigate(path);
         setLoading(false); // Hide loader AFTER transition
-      }, 700); 
+      }, 700);
+    }
+  };
+
+  const fetchUnseenScrapCount = async (uid) => {
+    try {
+      const unseenRef = collection(db, "users", uid, "unseenRequests");
+      const unseenSnapshot = await getDocs(unseenRef);
+      return unseenSnapshot.size; // Count of unseen requests
+    } catch (error) {
+      console.error("Error fetching unseen scrap count:", error);
+      return 0;
     }
   };
 
   useEffect(() => {
-    const updateScrapRequestsCount = () => {
-      const count = localStorage.getItem("newScrapRequests") || 0;
-      setScrapRequestsCount(parseInt(count, 10));
+    const user = auth.currentUser;
+    if (!user) return;
+  
+    // Fetch unseen scrap requests count
+    const fetchCount = async () => {
+      const unseenCount = await fetchUnseenScrapCount(user.uid);
+      setScrapRequestsCount(unseenCount);
     };
   
-    // Check for updates in localStorage every second
-    const interval = setInterval(updateScrapRequestsCount, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchCount(); // ✅ Call function here
+  
+    const q = query(
+      collection(db, "pickupRequests"),
+      where("scraperId", "==", user.uid),
+      where("status", "==", "Pending")
+    );
+  
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const unseenRef = collection(db, "users", user.uid, "unseenRequests");
+      const unseenSnapshot = await getDocs(unseenRef);
+      const seenRequests = unseenSnapshot.docs.map((doc) => doc.id); // IDs of seen requests
+  
+      let unseenCount = 0;
+  
+      snapshot.docs.forEach(async (docSnap) => {
+        const requestId = docSnap.id;
+  
+        // If request is NOT in unseenRequests, mark it as unseen
+        if (!seenRequests.includes(requestId)) {
+          await setDoc(doc(db, "users", user.uid, "unseenRequests", requestId), {
+            timestamp: new Date(),
+          });
+          unseenCount++;
+        }
+      });
+  
+      setScrapRequestsCount(unseenCount); // ✅ Update badge count
+    });
+  
+    return () => unsubscribe();
+  }, []); 
+  
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -279,13 +333,28 @@ const ScraperSidebar = () => {
 
   const menuItems = [
     { text: "Dashboard", icon: <Home />, path: "/dashboard/scraper" },
-    { text: "Available Requests", icon: (
-      <Badge badgeContent={scrapRequestsCount > 0 ? scrapRequestsCount : null} color="error">
-        <Assignment />
-      </Badge>
-    ), path: "/dashboard/scraper/requests" },    
-    { text: "Accepted Requests", icon: <LocalShipping />, path: "/dashboard/scraper/accepted" },
-    { text: "Completed Requests", icon: <CheckCircle />, path: "/dashboard/scraper/completed" },
+    {
+      text: "Available Requests",
+      icon: (
+        <Badge
+          badgeContent={scrapRequestsCount > 0 ? scrapRequestsCount : null}
+          color="error"
+        >
+          <Assignment />
+        </Badge>
+      ),
+      path: "/dashboard/scraper/requests",
+    },
+    {
+      text: "Accepted Requests",
+      icon: <LocalShipping />,
+      path: "/dashboard/scraper/accepted",
+    },
+    {
+      text: "Completed Requests",
+      icon: <CheckCircle />,
+      path: "/dashboard/scraper/completed",
+    },
     { text: "Live Map", icon: <Map />, path: "/dashboard/scraper/map" },
     { text: "Profile", icon: <AccountCircle />, path: "/profile" },
   ];
@@ -307,8 +376,12 @@ const ScraperSidebar = () => {
           open={true}
         >
           <CircularProgress size={80} />
-          <Typography sx={{ marginTop: "10px", fontWeight: "bold", color: "#004080" }}>
-            {nextPage ? `Loading ${nextPage.split("/").pop()}...` : "Loading..."}
+          <Typography
+            sx={{ marginTop: "10px", fontWeight: "bold", color: "#004080" }}
+          >
+            {nextPage
+              ? `Loading ${nextPage.split("/").pop()}...`
+              : "Loading..."}
           </Typography>
         </Backdrop>
       )}
@@ -323,7 +396,8 @@ const ScraperSidebar = () => {
           "& .MuiDrawer-paper": {
             width: open ? 250 : 80,
             boxSizing: "border-box",
-            background: "linear-gradient(45deg, #E3F2FD, #BBDEFB, #90CAF9, #64B5F6, #42A5F5)",
+            background:
+              "linear-gradient(45deg, #E3F2FD, #BBDEFB, #90CAF9, #64B5F6, #42A5F5)",
             backgroundSize: "400% 400%",
             animation: "gradientMove 8s infinite alternate",
             color: "#004080",
@@ -345,7 +419,14 @@ const ScraperSidebar = () => {
         </style>
 
         {/* Sidebar Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px",
+          }}
+        >
           {open && (
             <Typography
               variant="h6"
@@ -376,7 +457,8 @@ const ScraperSidebar = () => {
               onClick={() => handleNavigation(item.path)}
               sx={{
                 "&:hover": { backgroundColor: "rgba(0, 64, 128, 0.1)" },
-                backgroundColor: location.pathname === item.path ? "#42A5F5" : "transparent",
+                backgroundColor:
+                  location.pathname === item.path ? "#42A5F5" : "transparent",
                 color: location.pathname === item.path ? "white" : "#004080",
                 display: "flex",
                 flexDirection: open ? "row" : "column",
@@ -443,7 +525,9 @@ const ScraperSidebar = () => {
             >
               <ExitToApp />
             </ListItemIcon>
-            {open && <ListItemText primary="Logout" sx={{ marginLeft: "8px" }} />}
+            {open && (
+              <ListItemText primary="Logout" sx={{ marginLeft: "8px" }} />
+            )}
           </ListItem>
         </Box>
       </Drawer>

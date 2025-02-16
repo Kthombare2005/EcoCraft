@@ -193,75 +193,73 @@ import {
 import Sidebar from "./ScraperSidebar";
 import { motion } from "framer-motion";
 import "animate.css";
+import { updateDoc } from "firebase/firestore";
+import { Snackbar, Alert } from "@mui/material";
 
 const AvailableRequests = () => {
   const [requests, setRequests] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   useEffect(() => {
-    const fetchPickupRequests = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    const user = auth.currentUser;
+    if (!user) return;
 
-      setLoading(true);
-      const q = query(
-        collection(db, "pickupRequests"),
-        where("scraperId", "==", user.uid)
-      );
+    setLoading(true);
 
-      onSnapshot(q, async (snapshot) => {
-        const pickupData = [];
-        let newRequestsCount = 0;
+    const q = query(
+      collection(db, "pickupRequests"),
+      where("scraperId", "==", user.uid),
+      where("status", "==", "Pending Approval") // ✅ Fix: Match Firestore status field
+    );
 
-        for (let docSnap of snapshot.docs) {
-          const requestData = docSnap.data();
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const pickupData = [];
 
-          // Fetch Seller Details
-          const sellerDocRef = doc(db, "users", requestData.userId);
-          const sellerDoc = await getDoc(sellerDocRef);
-          const sellerData = sellerDoc.exists()
-            ? sellerDoc.data()
-            : { name: "Unknown Seller" };
+      for (let docSnap of snapshot.docs) {
+        const requestData = docSnap.data();
+        if (requestData.status !== "Pending Approval") continue; // ✅ Ensure only Pending Approval requests are added
 
-          // Fetch Scrap Image & Type from `scrapListings`
-          let scrapImage = null;
-          let scrapType = "Unknown Scrap";
+        const sellerDocRef = doc(db, "users", requestData.userId);
+        const sellerDoc = await getDoc(sellerDocRef);
+        const sellerData = sellerDoc.exists()
+          ? sellerDoc.data()
+          : { name: "Unknown Seller" };
 
-          if (requestData.scrapId) {
-            const scrapDocRef = doc(db, "scrapListings", requestData.scrapId);
-            const scrapDoc = await getDoc(scrapDocRef);
-            if (scrapDoc.exists()) {
-              const scrapData = scrapDoc.data();
-              scrapImage = scrapData.image || null;
-              scrapType = scrapData.scrapType || "Unknown Scrap";
-            }
+        let scrapImage = null;
+        let scrapType = "Unknown Scrap";
+
+        if (requestData.scrapId) {
+          const scrapDocRef = doc(db, "scrapListings", requestData.scrapId);
+          const scrapDoc = await getDoc(scrapDocRef);
+          if (scrapDoc.exists()) {
+            const scrapData = scrapDoc.data();
+            scrapImage = scrapData.image || null;
+            scrapType = scrapData.scrapType || "Unknown Scrap";
           }
-
-          // Track number of new requests
-          if (requestData.status === "Pending") {
-            newRequestsCount++;
-          }
-
-          pickupData.push({
-            id: docSnap.id,
-            ...requestData,
-            sellerName: sellerData.name,
-            sellerContact: sellerData.ContactNumber || "N/A",
-            image: scrapImage,
-            scrapType: scrapType,
-          });
         }
 
-        // Save the new requests count in localStorage for sidebar access
-        localStorage.setItem("newScrapRequests", newRequestsCount);
-        setRequests(pickupData);
-        setTimeout(() => setLoading(false), 500);
-      });
-    };
+        pickupData.push({
+          id: docSnap.id,
+          ...requestData,
+          sellerName: sellerData.name,
+          sellerContact: sellerData.ContactNumber || "N/A",
+          image: scrapImage,
+          scrapType: scrapType,
+        });
+      }
 
-    fetchPickupRequests();
+      setRequests(pickupData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe(); // ✅ Cleanup Firestore listener when component unmounts
   }, []);
 
   const handleOpenDetails = (request) => {
@@ -270,13 +268,27 @@ const AvailableRequests = () => {
 
   const handleApprove = async (requestId) => {
     try {
-      await db.collection("pickupRequests").doc(requestId).update({
-        status: "Approved",
+      await updateDoc(doc(db, "pickupRequests", requestId), {
+        status: "Accepted", // ✅ Ensure correct status is used
       });
-      alert("Pickup request approved successfully! ✅");
+
+      // ✅ Immediately remove from UI
+      setRequests((prevRequests) =>
+        prevRequests.filter((req) => req.id !== requestId)
+      );
+
+      setSnackbar({
+        open: true,
+        message: "Request accepted successfully! Moved to Accepted Requests ✅",
+        severity: "success",
+      });
     } catch (error) {
       console.error("Error approving request:", error);
-      alert("Failed to approve pickup request.");
+      setSnackbar({
+        open: true,
+        message: "Failed to approve pickup request.",
+        severity: "error",
+      });
     }
   };
 
@@ -361,10 +373,14 @@ const AvailableRequests = () => {
                       {request.image ? (
                         <CardMedia
                           component="img"
-                          height="200"
                           image={request.image}
                           alt={request.scrapName}
-                          sx={{ borderRadius: "12px 12px 0 0" }}
+                          sx={{
+                            width: "100%",
+                            height: { xs: "180px", sm: "220px", md: "250px" }, // ✅ Responsive height
+                            objectFit: "cover", // ✅ Ensures image fills the area correctly
+                            borderRadius: "12px 12px 0 0",
+                          }}
                         />
                       ) : (
                         <Box
@@ -463,74 +479,169 @@ const AvailableRequests = () => {
         </motion.div>
 
         {/* Dialog for Viewing Full Details */}
-        <Dialog open={!!selectedRequest} onClose={handleCloseDetails} fullWidth>
-  {selectedRequest && (
-    <>
-      <DialogTitle
-        sx={{
-          fontWeight: "bold",
-          textAlign: "center",
-          color: "#004080",
-        }}
-      >
-        Pickup Request Details
-      </DialogTitle>
-      <DialogContent sx={{ padding: "24px" }}> {/* 🔥 Added Padding */}
-        {selectedRequest.image && (
-          <Box sx={{ textAlign: "center", marginBottom: "16px" }}>
-            <img
-              src={selectedRequest.image}
-              alt="Scrap"
-              style={{ maxWidth: "100%", borderRadius: "8px" }}
-            />
-          </Box>
-        )}
+        <Dialog
+          open={!!selectedRequest}
+          onClose={handleCloseDetails}
+          fullWidth
+          maxWidth="sm" // ✅ Ensures Dialog fits on all screen sizes
+        >
+          {selectedRequest && (
+            <>
+              <DialogTitle
+                sx={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  color: "#004080",
+                  fontSize: { xs: "18px", sm: "22px" }, // ✅ Responsive text size
+                }}
+              >
+                Pickup Request Details
+              </DialogTitle>
+              <DialogContent
+                sx={{
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                {/* 🔥 Responsive Dialog Image */}
+                {selectedRequest.image && (
+                  <Box
+                    sx={{
+                      textAlign: "center",
+                      marginBottom: "16px",
+                      width: "100%",
+                    }}
+                  >
+                    <img
+                      src={selectedRequest.image}
+                      alt="Scrap"
+                      style={{
+                        width: "100%",
+                        maxWidth: "350px",
+                        height: "auto",
+                        borderRadius: "8px",
+                      }} // ✅ Responsive image
+                    />
+                  </Box>
+                )}
 
-        {/* 🔥 Improved Spacing for Better Readability */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold", color: "#004080" }}>
-            Scrap Name: <span style={{ fontWeight: "normal", color: "#000" }}>{selectedRequest.scrapName}</span>
-          </Typography>
-          <Typography variant="body1">
-            <strong>Scrap Type:</strong> {selectedRequest.scrapType}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Weight:</strong> {selectedRequest.weight} {selectedRequest.unit}
-          </Typography>
-          {selectedRequest.price && (
-            <Typography variant="body1">
-              <strong>Price:</strong> ₹{selectedRequest.price}
-            </Typography>
+                {/* 🔥 Improved Spacing & Text Responsiveness */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                    width: "100%",
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      color: "#004080",
+                      textAlign: "center",
+                      fontSize: { xs: "16px", sm: "18px" },
+                    }} // ✅ Adaptive font size
+                  >
+                    Scrap Name:{" "}
+                    <span style={{ fontWeight: "normal", color: "#000" }}>
+                      {selectedRequest.scrapName}
+                    </span>
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Scrap Type:</strong> {selectedRequest.scrapType}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Weight:</strong> {selectedRequest.weight}{" "}
+                    {selectedRequest.unit}
+                  </Typography>
+                  {selectedRequest.price && (
+                    <Typography
+                      variant="body1"
+                      sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                    >
+                      <strong>Price:</strong> ₹{selectedRequest.price}
+                    </Typography>
+                  )}
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Location:</strong> {selectedRequest.city},{" "}
+                    {selectedRequest.state}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Address:</strong> {selectedRequest.address}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Seller:</strong> {selectedRequest.sellerName}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
+                  >
+                    <strong>Contact:</strong> {selectedRequest.sellerContact}
+                  </Typography>
+                </Box>
+              </DialogContent>
+
+              {/* 🔥 Responsive Buttons */}
+              <DialogActions
+                sx={{
+                  padding: "12px",
+                  justifyContent: "center",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: "10px",
+                }}
+              >
+                <Button
+                  onClick={handleCloseDetails}
+                  color="primary"
+                  variant="contained"
+                  sx={{
+                    width: { xs: "100%", sm: "auto" }, // ✅ Full width on mobile, auto on larger screens
+                    padding: { xs: "10px", sm: "12px 24px" }, // ✅ Adjust padding for better touch experience
+                    fontSize: { xs: "14px", sm: "16px" }, // ✅ Ensures readable button text
+                  }}
+                >
+                  Close
+                </Button>
+              </DialogActions>
+            </>
           )}
-          <Typography variant="body1">
-            <strong>Location:</strong> {selectedRequest.city}, {selectedRequest.state}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Address:</strong> {selectedRequest.address}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Seller:</strong> {selectedRequest.sellerName}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Contact:</strong> {selectedRequest.sellerContact}
-          </Typography>
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ padding: "16px", justifyContent: "center" }}> {/* 🔥 Centered Close Button */}
-        <Button onClick={handleCloseDetails} color="primary" variant="contained">
-          Close
-        </Button>
-      </DialogActions>
-    </>
-  )}
-</Dialog>
+        </Dialog>
 
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Box>
   );
 };
 
 export default AvailableRequests;
-
-
-

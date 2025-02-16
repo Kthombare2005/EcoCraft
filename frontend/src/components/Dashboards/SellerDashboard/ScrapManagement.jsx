@@ -1030,6 +1030,8 @@ import { fetchNearbyScrapersWithGamini } from "../../../utils/gaminiUtils"; // C
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import { log } from "../../../utils/log";
 import axios from "axios";
+import { updateDoc } from "firebase/firestore";
+
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1061,7 +1063,6 @@ const ScrapManagement = () => {
     }
   
     try {
-      // Fetch seller details
       const userId = auth.currentUser?.uid;
       let sellerName = "Unknown Seller";
       if (userId) {
@@ -1071,12 +1072,11 @@ const ScrapManagement = () => {
         }
       }
   
-      // Create pickup request
       const pickupData = {
         scrapId: selectedScrap.id || "N/A",
-        scraperId: scraper.id, // Firestore ID now available
+        scraperId: scraper.id,
         userId: userId || "Unknown User",
-        sellerName: sellerName, // Store seller name for easy reference
+        sellerName,
         scrapName: selectedScrap.scrapName || "Unknown Scrap",
         address: selectedScrap.address || "No Address",
         city: selectedScrap.city || "No City",
@@ -1084,26 +1084,32 @@ const ScrapManagement = () => {
         weight: selectedScrap.weight || "N/A",
         unit: selectedScrap.unit || "N/A",
         price: selectedScrap.price || "N/A",
-        status: "Pending",
+        status: "Pending Approval",  // Set pickup status as pending
         createdOn: serverTimestamp(),
       };
   
       await addDoc(collection(db, "pickupRequests"), pickupData);
   
-      // Send notification to scraper
+      // Update the scrap listing with pickup status
+      await updateDoc(doc(db, "scrapListings", selectedScrap.id), {
+        pickupStatus: "Pending Approval",
+      });
+  
       await addDoc(collection(db, "notifications"), {
-        scraperId: scraper.id, // The recipient of the notification
+        scraperId: scraper.id,
         message: `New pickup request from ${sellerName} for scrap: ${selectedScrap.scrapName}`,
         status: "unread",
         createdOn: serverTimestamp(),
       });
   
       alert(`Pickup request successfully sent to ${scraper.name}!`);
+      fetchScrapListings(); // Refresh scrap listing to reflect new status
     } catch (error) {
       console.error("Error scheduling pickup:", error);
       alert("Failed to schedule pickup. Please try again.");
     }
   };
+  
   
   
   
@@ -1234,6 +1240,7 @@ const ScrapManagement = () => {
       console.error("Error fetching scrap listings:", error);
     }
   };
+  
 
   const [formData, setFormData] = useState({
     name: "",
@@ -1495,100 +1502,109 @@ const ScrapManagement = () => {
                       key={scrap.id}
                     >
                       <div
-                        className="card"
-                        style={{
-                          borderRadius: "12px",
-                          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                          overflow: "hidden",
-                          border: "none",
-                        }}
-                      >
-                        {/* Top Section for Image or Scrap Type */}
-                        <div
-                          style={{
-                            height: "200px", // Increased height for the image area
-                            backgroundColor: "#f0f0f0",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {scrap.image ? (
-                            <img
-                              src={scrap.image}
-                              alt={scrap.scrapName}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                borderRadius: "8px 8px 0 0",
-                              }}
-                            />
-                          ) : (
-                            <h3 style={{ fontWeight: "bold", color: "#999" }}>
-                              {scrap.scrapType || "Scrap"}
-                            </h3>
-                          )}
-                        </div>
+  className="card"
+  style={{
+    borderRadius: "12px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    overflow: "hidden",
+    border: "none",
+  }}
+>
+  <div
+    style={{
+      height: "200px",
+      backgroundColor: "#f0f0f0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    {scrap.image ? (
+      <img
+        src={scrap.image}
+        alt={scrap.scrapName}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          borderRadius: "8px 8px 0 0",
+        }}
+      />
+    ) : (
+      <h3 style={{ fontWeight: "bold", color: "#999" }}>
+        {scrap.scrapType || "Scrap"}
+      </h3>
+    )}
+  </div>
 
-                        {/* Card Body */}
-                        <div className="card-body" style={{ padding: "20px" }}>
-                          <h5
-                            style={{
-                              fontWeight: "bold",
-                              marginBottom: "10px",
-                              color: "#333",
-                            }}
-                          >
-                            {scrap.scrapName || "Scrap Item"}
-                          </h5>
-                          <p style={{ fontSize: "0.9rem", color: "#666" }}>
-                            Listed on:{" "}
-                            {scrap.createdOn && scrap.createdOn.toDate
-                              ? scrap.createdOn.toDate().toLocaleDateString()
-                              : "Unknown Date"}
-                            <br />
-                            <strong>Weight:</strong>{" "}
-                            {scrap.weight
-                              ? `${scrap.weight} ${scrap.unit}`
-                              : "N/A"}{" "}
-                            <br />
-                            <strong>Category:</strong>{" "}
-                            {scrap.scrapType || "N/A"} <br />
-                            <strong>Location:</strong> {scrap.city || "N/A"},{" "}
-                            {scrap.state || "N/A"}
-                          </p>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            {/* <h6
-                              style={{
-                                fontWeight: "bold",
-                                color: "#28a745",
-                                marginBottom: "0",
-                              }}
-                            >
-                              ₹{scrap.price || "N/A"}
-                            </h6> */}
-                            <a
-                              href="#"
-                              className="btn"
-                              style={{
-                                color: "#007bff",
-                                textDecoration: "none",
-                                fontWeight: "bold",
-                              }}
-                              onClick={() => handleOpenDialog(scrap)}
-                            >
-                              View Details →
-                            </a>
-                          </div>
-                        </div>
-                      </div>
+  <div className="card-body" style={{ padding: "20px" }}>
+    <h5
+      style={{
+        fontWeight: "bold",
+        marginBottom: "10px",
+        color: "#333",
+      }}
+    >
+      {scrap.scrapName || "Scrap Item"}
+    </h5>
+    <p style={{ fontSize: "0.9rem", color: "#666" }}>
+      Listed on:{" "}
+      {scrap.createdOn && scrap.createdOn.toDate
+        ? scrap.createdOn.toDate().toLocaleDateString()
+        : "Unknown Date"}
+      <br />
+      <strong>Weight:</strong>{" "}
+      {scrap.weight ? `${scrap.weight} ${scrap.unit}` : "N/A"} <br />
+      <strong>Category:</strong> {scrap.scrapType || "N/A"} <br />
+      <strong>Location:</strong> {scrap.city || "N/A"}, {scrap.state || "N/A"}
+    </p>
+
+    {/* Show pickup request status */}
+    {scrap.pickupStatus ? (
+      <p
+        style={{
+          fontWeight: "bold",
+          color: scrap.pickupStatus === "Pending Approval" ? "#FFA500" : "#28a745",
+          marginBottom: "10px",
+        }}
+      >
+        🚚 Pickup Status: {scrap.pickupStatus}
+      </p>
+    ) : (
+      <p
+        style={{
+          fontWeight: "bold",
+          color: "#999",
+          marginBottom: "10px",
+        }}
+      >
+        No Pickup Requested
+      </p>
+    )}
+
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <a
+        href="#"
+        className="btn"
+        style={{
+          color: "#007bff",
+          textDecoration: "none",
+          fontWeight: "bold",
+        }}
+        onClick={() => handleOpenDialog(scrap)}
+      >
+        View Details →
+      </a>
+    </div>
+  </div>
+</div>
+
                     </div>
                   ))
                 ) : (
@@ -1873,7 +1889,7 @@ const ScrapManagement = () => {
                     value={formData.pinCode}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (/^\d{0,5}$/.test(value)) {
+                      if (/^\d{0,6}$/.test(value)) {
                         setFormData((prev) => ({ ...prev, pinCode: value }));
                       }
                     }}

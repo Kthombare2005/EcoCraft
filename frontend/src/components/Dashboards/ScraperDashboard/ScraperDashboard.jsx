@@ -190,6 +190,8 @@ import {
 import { motion } from "framer-motion";
 import "animate.css";
 import PageLoader from "../../../components/PageLoader";
+import {getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+
 const cardVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -284,18 +286,25 @@ const ScraperDashboard = () => {
     try {
       const q = query(
         collection(db, "pickupRequests"),
-        where("scraperId", "==", uid)
+        where("scraperId", "==", uid),
+        where("status", "==", "Pending") // Only fetch pending requests
       );
+  
       onSnapshot(q, async (snapshot) => {
+        if (snapshot.empty) {
+          console.log("No new pickup requests.");
+          return;
+        }
+  
         const activities = await Promise.all(
           snapshot.docs.map(async (document) => {
             const pickupData = { id: document.id, ...document.data() };
             let sellerName = "Unknown Seller";
-
+  
             // Fetch seller details using `userId`
             if (pickupData.userId) {
               try {
-                const sellerDocRef = doc(db, "users", pickupData.userId); // Corrected Firestore reference
+                const sellerDocRef = doc(db, "users", pickupData.userId);
                 const sellerDoc = await getDoc(sellerDocRef);
                 if (sellerDoc.exists()) {
                   sellerName = sellerDoc.data().name || "Unknown Seller";
@@ -304,7 +313,7 @@ const ScraperDashboard = () => {
                 console.error("Error fetching seller details:", error);
               }
             }
-
+  
             return {
               id: document.id,
               message: `New pickup request from ${sellerName} for scrap: ${
@@ -315,17 +324,40 @@ const ScraperDashboard = () => {
             };
           })
         );
-
-        if (activities.length > 0) {
-          setNewPickup(activities[activities.length - 1]); // Show notification
+  
+        // 🔥 Fetch Seen Notifications from Firestore
+        const seenRef = collection(db, "users", uid, "notifications");
+        const seenSnapshot = await getDocs(seenRef);
+        const seenRequests = seenSnapshot.docs.map((doc) => doc.id); // Extract IDs
+  
+        // 🔥 Filter Out Already Seen Requests
+        const newNotifications = activities.filter(
+          (req) => !seenRequests.includes(req.id)
+        );
+  
+        if (newNotifications.length > 0) {
+          console.log("New Notification:", newNotifications[newNotifications.length - 1]);
+  
+          setNewPickup(newNotifications[newNotifications.length - 1]); // Show latest notification
+  
+          // 🔥 Mark Notifications as Seen in Firestore
+          newNotifications.forEach(async (notif) => {
+            await setDoc(doc(db, "users", uid, "notifications", notif.id), {
+              seen: true,
+              timestamp: serverTimestamp(),
+            });
+          });
         }
-
+  
         setRecentActivity(activities);
       });
     } catch (error) {
       console.error("Error fetching recent activity:", error);
     }
   };
+  
+  
+  
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -464,15 +496,16 @@ const ScraperDashboard = () => {
 
         {/* Snackbar Notification */}
         <Snackbar
-          open={!!newPickup}
-          autoHideDuration={5000}
-          onClose={() => setNewPickup(null)}
-          anchorOrigin={{ vertical: "top", horizontal: "right" }} // Set to Top-Right
-        >
-          <Alert severity="info" onClose={() => setNewPickup(null)}>
-            {newPickup?.message || "New pickup request received!"}
-          </Alert>
-        </Snackbar>
+  open={!!newPickup}
+  autoHideDuration={5000}
+  onClose={() => setNewPickup(null)}
+  anchorOrigin={{ vertical: "top", horizontal: "right" }} // ✅ Set to Top-Right
+>
+  <Alert severity="info" onClose={() => setNewPickup(null)}>
+    {newPickup?.message || "New pickup request received!"}
+  </Alert>
+</Snackbar>
+
       </Box>
     </Box>
     </>
