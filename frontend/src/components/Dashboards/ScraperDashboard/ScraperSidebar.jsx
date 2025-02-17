@@ -246,7 +246,7 @@ import { Badge } from "@mui/material";
 import { useEffect } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../../firebaseConfig"; // Ensure db is imported
-import {   doc, getDocs, setDoc, } from "firebase/firestore";
+// import {   doc, getDocs, setDoc, } from "firebase/firestore";
 
 
 const ScraperSidebar = () => {
@@ -271,59 +271,40 @@ const ScraperSidebar = () => {
     }
   };
 
-  const fetchUnseenScrapCount = async (uid) => {
-    try {
-      const unseenRef = collection(db, "users", uid, "unseenRequests");
-      const unseenSnapshot = await getDocs(unseenRef);
-      return unseenSnapshot.size; // Count of unseen requests
-    } catch (error) {
-      console.error("Error fetching unseen scrap count:", error);
-      return 0;
-    }
-  };
+  // const fetchUnseenScrapCount = async (uid) => {
+  //   try {
+  //     const unseenRef = collection(db, "users", uid, "unseenRequests");
+  //     const unseenSnapshot = await getDocs(unseenRef);
+  //     return unseenSnapshot.size; // Count of unseen requests
+  //   } catch (error) {
+  //     console.error("Error fetching unseen scrap count:", error);
+  //     return 0;
+  //   }
+  // };
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
   
-    // Fetch unseen scrap requests count
-    const fetchCount = async () => {
-      const unseenCount = await fetchUnseenScrapCount(user.uid);
-      setScrapRequestsCount(unseenCount);
-    };
-  
-    fetchCount(); // ✅ Call function here
-  
     const q = query(
       collection(db, "pickupRequests"),
       where("scraperId", "==", user.uid),
-      where("status", "==", "Pending")
+      where("status", "==", "Pending Approval")
     );
   
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const unseenRef = collection(db, "users", user.uid, "unseenRequests");
-      const unseenSnapshot = await getDocs(unseenRef);
-      const seenRequests = unseenSnapshot.docs.map((doc) => doc.id); // IDs of seen requests
+      const newRequestsCount = snapshot.size; // Count new requests
   
-      let unseenCount = 0;
+      // ✅ Check if the scraper has already viewed requests
+      const hasViewed = localStorage.getItem("hasViewedScrapRequests") === "true";
   
-      snapshot.docs.forEach(async (docSnap) => {
-        const requestId = docSnap.id;
-  
-        // If request is NOT in unseenRequests, mark it as unseen
-        if (!seenRequests.includes(requestId)) {
-          await setDoc(doc(db, "users", user.uid, "unseenRequests", requestId), {
-            timestamp: new Date(),
-          });
-          unseenCount++;
-        }
-      });
-  
-      setScrapRequestsCount(unseenCount); // ✅ Update badge count
+      // ✅ Only show count if not viewed yet
+      setScrapRequestsCount(hasViewed ? 0 : newRequestsCount);
     });
   
     return () => unsubscribe();
-  }, []); 
+  }, []);
+  
   
 
   const handleLogout = async () => {
@@ -344,7 +325,7 @@ const ScraperSidebar = () => {
         </Badge>
       ),
       path: "/dashboard/scraper/requests",
-    },
+    },    
     {
       text: "Accepted Requests",
       icon: <LocalShipping />,

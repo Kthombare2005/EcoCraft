@@ -1018,7 +1018,13 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import Sidebar from "../Sidebar";
 import { db, auth } from "../../../firebaseConfig";
-import { collection, addDoc, doc, getDoc, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import statesJson from "../../../assets/states.json";
 import citiesJson from "../../../assets/cities.json";
@@ -1030,8 +1036,7 @@ import { fetchNearbyScrapersWithGamini } from "../../../utils/gaminiUtils"; // C
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import { log } from "../../../utils/log";
 import axios from "axios";
-import { updateDoc } from "firebase/firestore";
-
+import { updateDoc, getDocs, where, query } from "firebase/firestore";
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1049,20 +1054,28 @@ const ScrapManagement = () => {
   const [nearbyScrapers, setNearbyScrapers] = useState([]);
   const [loading, setLoading] = useState(false);
   // const [addressError, setAddressError] = useState("");
-
   const schedulePickup = async (scraper) => {
     if (!selectedScrap) {
       alert("No scrap selected for pickup.");
       return;
     }
-  
+
     if (!scraper?.id) {
-      console.error("Scraper ID missing. Ensure Firestore document ID is used.", scraper);
       alert("Scraper data is invalid. Please try again.");
       return;
     }
-  
+
     try {
+      const pickupRequestsRef = collection(db, "pickupRequests");
+      const querySnapshot = await getDocs(
+        query(pickupRequestsRef, where("scrapId", "==", selectedScrap.id))
+      );
+
+      if (!querySnapshot.empty) {
+        alert("🚚 Pickup request already exists for this scrap!");
+        return;
+      }
+
       const userId = auth.currentUser?.uid;
       let sellerName = "Unknown Seller";
       if (userId) {
@@ -1071,9 +1084,9 @@ const ScrapManagement = () => {
           sellerName = userDoc.data().name || "Unknown Seller";
         }
       }
-  
+
       const pickupData = {
-        scrapId: selectedScrap.id || "N/A",
+        scrapId: selectedScrap.id,
         scraperId: scraper.id,
         userId: userId || "Unknown User",
         sellerName,
@@ -1084,37 +1097,24 @@ const ScrapManagement = () => {
         weight: selectedScrap.weight || "N/A",
         unit: selectedScrap.unit || "N/A",
         price: selectedScrap.price || "N/A",
-        status: "Pending Approval",  // Set pickup status as pending
+        status: "Pending Approval",
         createdOn: serverTimestamp(),
       };
-  
+
       await addDoc(collection(db, "pickupRequests"), pickupData);
-  
-      // Update the scrap listing with pickup status
+
+      // ✅ Only update the pickup status for this scrap, not all scraps
       await updateDoc(doc(db, "scrapListings", selectedScrap.id), {
         pickupStatus: "Pending Approval",
       });
-  
-      await addDoc(collection(db, "notifications"), {
-        scraperId: scraper.id,
-        message: `New pickup request from ${sellerName} for scrap: ${selectedScrap.scrapName}`,
-        status: "unread",
-        createdOn: serverTimestamp(),
-      });
-  
-      alert(`Pickup request successfully sent to ${scraper.name}!`);
+
+      alert(`🚚 Pickup request successfully sent to ${scraper.name}!`);
       fetchScrapListingsRealtime();
- // Refresh scrap listing to reflect new status
     } catch (error) {
       console.error("Error scheduling pickup:", error);
       alert("Failed to schedule pickup. Please try again.");
     }
   };
-  
-  
-  
-  
-  
 
   const validateAddress = async (address, city, state) => {
     const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M"; // Replace with your actual API key
@@ -1195,7 +1195,7 @@ const ScrapManagement = () => {
 
       handleDialogClose();
       fetchScrapListingsRealtime();
- // Refresh the scrap listing
+      // Refresh the scrap listing
       alert("Scrap listing added successfully!");
     } catch (error) {
       console.error("Error adding scrap listing:", error);
@@ -1229,20 +1229,59 @@ const ScrapManagement = () => {
     setOpenDialog(false);
     setSelectedScrap(null);
   };
-
   const fetchScrapListingsRealtime = () => {
     const scrapListingsRef = collection(db, "scrapListings");
-  
-    return onSnapshot(scrapListingsRef, (snapshot) => {
-      const listings = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setScrapListings(listings);
-    });
+
+    // Real-time listener for scrap listings
+    const unsubscribeScrapListings = onSnapshot(
+      scrapListingsRef,
+      (snapshot) => {
+        const listings = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setScrapListings(listings);
+      }
+    );
+
+    // Real-time listener for pickup requests (Update Only Affected Scraps)
+    const pickupRequestsRef = collection(db, "pickupRequests");
+
+    const unsubscribePickupRequests = onSnapshot(
+      pickupRequestsRef,
+      (snapshot) => {
+        setScrapListings((prevListings) => {
+          // Preserve previous statuses, especially "Accepted" ones
+          const updatedStatuses = {
+            ...prevListings.reduce((acc, scrap) => {
+              acc[scrap.id] = scrap.pickupStatus || "No Pickup Requested";
+              return acc;
+            }, {}),
+          };
+
+          snapshot.docChanges().forEach((change) => {
+            const pickupData = change.doc.data();
+            if (pickupData.scrapId) {
+              // 🛑 Do NOT update status if it's already "Accepted"
+              if (updatedStatuses[pickupData.scrapId] !== "Accepted") {
+                updatedStatuses[pickupData.scrapId] = pickupData.status;
+              }
+            }
+          });
+
+          return prevListings.map((scrap) => ({
+            ...scrap,
+            pickupStatus: updatedStatuses[scrap.id],
+          }));
+        });
+      }
+    );
+
+    return () => {
+      unsubscribeScrapListings();
+      unsubscribePickupRequests();
+    };
   };
-  
-  
 
   const [formData, setFormData] = useState({
     name: "",
@@ -1278,32 +1317,47 @@ const ScrapManagement = () => {
       setIsSmallScreen(window.innerWidth < 600);
     };
     window.addEventListener("resize", handleResize);
-  
+
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         fetchUserData(currentUser.uid);
       }
     });
-  
-    // ✅ Real-time listener for scrapListings
+
+    // ✅ Real-time listener for scrap listings
     const unsubscribeScrapListings = fetchScrapListingsRealtime();
-  
-    // ✅ Real-time listener for pickupRequests to update pickupStatus
-    const unsubscribePickupRequests = onSnapshot(collection(db, "pickupRequests"), (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "modified") {
-          const updatedPickup = change.doc.data();
-          setScrapListings((prevListings) =>
-            prevListings.map((scrap) =>
-              scrap.id === updatedPickup.scrapId
-                ? { ...scrap, pickupStatus: updatedPickup.status }
-                : scrap
-            )
-          );
-        }
-      });
-    });
-  
+
+    // ✅ Real-time listener for pickupRequests (Ensuring Accepted Status is Not Overwritten)
+    const unsubscribePickupRequests = onSnapshot(
+      collection(db, "pickupRequests"),
+      (snapshot) => {
+        setScrapListings((prevListings) => {
+          // Preserve previous statuses, especially "Accepted" ones
+          const updatedStatuses = {
+            ...prevListings.reduce((acc, scrap) => {
+              acc[scrap.id] = scrap.pickupStatus || "No Pickup Requested";
+              return acc;
+            }, {}),
+          };
+
+          snapshot.docChanges().forEach((change) => {
+            const pickupData = change.doc.data();
+            if (pickupData.scrapId) {
+              // 🛑 Do NOT update status if it's already "Accepted"
+              if (updatedStatuses[pickupData.scrapId] !== "Accepted") {
+                updatedStatuses[pickupData.scrapId] = pickupData.status;
+              }
+            }
+          });
+
+          return prevListings.map((scrap) => ({
+            ...scrap,
+            pickupStatus: updatedStatuses[scrap.id],
+          }));
+        });
+      }
+    );
+
     return () => {
       window.removeEventListener("resize", handleResize);
       unsubscribeAuth();
@@ -1311,7 +1365,6 @@ const ScrapManagement = () => {
       unsubscribePickupRequests();
     };
   }, []);
-  
 
   const fetchUserData = async (uid) => {
     try {
@@ -1525,109 +1578,121 @@ const ScrapManagement = () => {
                       key={scrap.id}
                     >
                       <div
-  className="card"
-  style={{
-    borderRadius: "12px",
-    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-    overflow: "hidden",
-    border: "none",
-  }}
->
-  <div
-    style={{
-      height: "200px",
-      backgroundColor: "#f0f0f0",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    {scrap.image ? (
-      <img
-        src={scrap.image}
-        alt={scrap.scrapName}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          borderRadius: "8px 8px 0 0",
-        }}
-      />
-    ) : (
-      <h3 style={{ fontWeight: "bold", color: "#999" }}>
-        {scrap.scrapType || "Scrap"}
-      </h3>
-    )}
-  </div>
+                        className="card"
+                        style={{
+                          borderRadius: "12px",
+                          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                          overflow: "hidden",
+                          border: "none",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "200px",
+                            backgroundColor: "#f0f0f0",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {scrap.image ? (
+                            <img
+                              src={scrap.image}
+                              alt={scrap.scrapName}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                borderRadius: "8px 8px 0 0",
+                              }}
+                            />
+                          ) : (
+                            <h3 style={{ fontWeight: "bold", color: "#999" }}>
+                              {scrap.scrapType || "Scrap"}
+                            </h3>
+                          )}
+                        </div>
 
-  <div className="card-body" style={{ padding: "20px" }}>
-    <h5
-      style={{
-        fontWeight: "bold",
-        marginBottom: "10px",
-        color: "#333",
-      }}
-    >
-      {scrap.scrapName || "Scrap Item"}
-    </h5>
-    <p style={{ fontSize: "0.9rem", color: "#666" }}>
-      Listed on:{" "}
-      {scrap.createdOn && scrap.createdOn.toDate
-        ? scrap.createdOn.toDate().toLocaleDateString()
-        : "Unknown Date"}
-      <br />
-      <strong>Weight:</strong>{" "}
-      {scrap.weight ? `${scrap.weight} ${scrap.unit}` : "N/A"} <br />
-      <strong>Category:</strong> {scrap.scrapType || "N/A"} <br />
-      <strong>Location:</strong> {scrap.city || "N/A"}, {scrap.state || "N/A"}
-    </p>
+                        <div className="card-body" style={{ padding: "20px" }}>
+                          <h5
+                            style={{
+                              fontWeight: "bold",
+                              marginBottom: "10px",
+                              color: "#333",
+                            }}
+                          >
+                            {scrap.scrapName || "Scrap Item"}
+                          </h5>
+                          <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                            Listed on:{" "}
+                            {scrap.createdOn && scrap.createdOn.toDate
+                              ? scrap.createdOn.toDate().toLocaleDateString()
+                              : "Unknown Date"}
+                            <br />
+                            <strong>Weight:</strong>{" "}
+                            {scrap.weight
+                              ? `${scrap.weight} ${scrap.unit}`
+                              : "N/A"}{" "}
+                            <br />
+                            <strong>Category:</strong>{" "}
+                            {scrap.scrapType || "N/A"} <br />
+                            <strong>Location:</strong> {scrap.city || "N/A"},{" "}
+                            {scrap.state || "N/A"}
+                          </p>
 
-    {/* Show pickup request status */}
-    {scrap.pickupStatus ? (
-      <p
-        style={{
-          fontWeight: "bold",
-          color: scrap.pickupStatus === "Pending Approval" ? "#FFA500" : "#28a745",
-          marginBottom: "10px",
-        }}
-      >
-        🚚 Pickup Status: {scrap.pickupStatus}
-      </p>
-    ) : (
-      <p
-        style={{
-          fontWeight: "bold",
-          color: "#999",
-          marginBottom: "10px",
-        }}
-      >
-        No Pickup Requested
-      </p>
-    )}
+                          {/* Show pickup request status */}
+                          {scrap.pickupStatus ? (
+                            <p
+                              style={{
+                                fontWeight: "bold",
+                                color:
+                                  scrap.pickupStatus === "Accepted"
+                                    ? "#28a745" // Green for Accepted
+                                    : scrap.pickupStatus === "Pending Approval"
+                                    ? "#FFA500" // Orange for Pending Approval
+                                    : scrap.pickupStatus === "Rejected"
+                                    ? "#FF0000" // Red for Rejected
+                                    : "#999", // Gray for "No Pickup Requested"
+                                marginBottom: "10px",
+                              }}
+                            >
+                              🚚 Pickup Status:{" "}
+                              {scrap.pickupStatus || "No Pickup Requested"}
+                            </p>
+                          ) : (
+                            <p
+                              style={{
+                                fontWeight: "bold",
+                                color: "#999",
+                                marginBottom: "10px",
+                              }}
+                            >
+                              No Pickup Requested
+                            </p>
+                          )}
 
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <a
-        href="#"
-        className="btn"
-        style={{
-          color: "#007bff",
-          textDecoration: "none",
-          fontWeight: "bold",
-        }}
-        onClick={() => handleOpenDialog(scrap)}
-      >
-        View Details →
-      </a>
-    </div>
-  </div>
-</div>
-
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <a
+                              href="#"
+                              className="btn"
+                              style={{
+                                color: "#007bff",
+                                textDecoration: "none",
+                                fontWeight: "bold",
+                              }}
+                              onClick={() => handleOpenDialog(scrap)}
+                            >
+                              View Details →
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
