@@ -1037,6 +1037,7 @@ import LoadingSpinner from "../../../components/LoadingSpinner";
 import { log } from "../../../utils/log";
 import axios from "axios";
 import { updateDoc, getDocs, where, query } from "firebase/firestore";
+import { Snackbar, Alert } from "@mui/material";
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
 const GAMINI_API_URL =
@@ -1053,15 +1054,30 @@ const ScrapManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [nearbyScrapers, setNearbyScrapers] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [notification, setNotification] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
+  const showNotification = (message, severity = "info") => {
+    setNotification({ open: true, message, severity });
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
+  };
+
   // const [addressError, setAddressError] = useState("");
   const schedulePickup = async (scraper) => {
     if (!selectedScrap) {
-      alert("No scrap selected for pickup.");
+      showNotification("No scrap selected for pickup.", "warning");
       return;
     }
 
     if (!scraper?.id) {
-      alert("Scraper data is invalid. Please try again.");
+      showNotification("Scraper data is invalid. Please try again.", "error");
       return;
     }
 
@@ -1072,8 +1088,22 @@ const ScrapManagement = () => {
       );
 
       if (!querySnapshot.empty) {
-        alert("🚚 Pickup request already exists for this scrap!");
-        return;
+        const existingPickup = querySnapshot.docs[0].data();
+
+        // 🛑 Prevent new request if status is already "Accepted"
+        if (existingPickup.status === "Accepted") {
+          showNotification(
+            "🚫 Pickup request already accepted. No new request allowed!",
+            "error"
+          );
+          return;
+        } else {
+          showNotification(
+            "🚚 Pickup request already exists for this scrap!",
+            "warning"
+          );
+          return;
+        }
       }
 
       const userId = auth.currentUser?.uid;
@@ -1103,16 +1133,18 @@ const ScrapManagement = () => {
 
       await addDoc(collection(db, "pickupRequests"), pickupData);
 
-      // ✅ Only update the pickup status for this scrap, not all scraps
       await updateDoc(doc(db, "scrapListings", selectedScrap.id), {
         pickupStatus: "Pending Approval",
       });
 
-      alert(`🚚 Pickup request successfully sent to ${scraper.name}!`);
+      showNotification(
+        `🚚 Pickup request successfully sent to ${scraper.name}!`,
+        "success"
+      );
       fetchScrapListingsRealtime();
     } catch (error) {
       console.error("Error scheduling pickup:", error);
-      alert("Failed to schedule pickup. Please try again.");
+      showNotification("Failed to schedule pickup. Please try again.", "error");
     }
   };
 
@@ -2143,6 +2175,35 @@ const ScrapManagement = () => {
             </Button>
           </DialogActions>
         </Dialog>
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={4000} // Hide after 4 seconds
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }} // Center at the top
+          sx={{
+            "& .MuiSnackbarContent-root": {
+              fontSize: "1.1rem", // Adjust font size
+              fontWeight: "bold",
+              backgroundColor:
+                notification.severity === "success"
+                  ? "#28a745"
+                  : notification.severity === "warning"
+                  ? "#FFA500"
+                  : "#d32f2f", // Colors for success, warning, error
+              color: "#fff",
+              boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)", // Add shadow
+              borderRadius: "8px", // Rounded edges
+            },
+          }}
+        >
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification.severity}
+            sx={{ width: "100%" }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Box>
   );
