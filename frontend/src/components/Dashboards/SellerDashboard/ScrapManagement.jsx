@@ -324,24 +324,24 @@ const ScrapManagement = () => {
       snapshot.docs.forEach((doc) => {
         const pickupData = doc.data();
         if (pickupData.scrapId) {
-          if (!statusMap[pickupData.scrapId] || 
-              statusMap[pickupData.scrapId] !== "Accepted" ||
-              pickupData.status === "Accepted") {
-            statusMap[pickupData.scrapId] = pickupData.status;
-          }
+          statusMap[pickupData.scrapId] = pickupData.status;
         }
       });
     });
 
     const unsubscribeScrapListings = onSnapshot(scrapListingsRef, (snapshot) => {
-      const listings = snapshot.docs.map((doc) => {
-        const scrapData = doc.data();
-        return {
-          id: doc.id,
-          ...scrapData,
-          pickupStatus: statusMap[doc.id] || "No Pickup Requested"
-        };
-      });
+      const listings = snapshot.docs
+        .map((doc) => {
+          const scrapData = doc.data();
+          return {
+            id: doc.id,
+            ...scrapData,
+            pickupStatus: statusMap[doc.id] || "No Pickup Requested"
+          };
+        })
+        // Filter out scraps with "Accepted" status
+        .filter(scrap => statusMap[scrap.id] !== "Accepted");
+
       setScrapListings(listings);
     });
 
