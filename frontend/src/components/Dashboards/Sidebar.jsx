@@ -12,6 +12,8 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [acceptedPickupsCount, setAcceptedPickupsCount] = useState(0);
+  const [hasNewPickups, setHasNewPickups] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const fetchUserData = async (uid) => {
     try {
@@ -51,12 +53,26 @@ const Sidebar = () => {
       where("status", "==", "Accepted")
     );
 
+    let isInitialLoad = true;
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setAcceptedPickupsCount(snapshot.size);
+      
+      if (!isInitialLoad && snapshot.docChanges().length > 0) {
+        setHasNewPickups(true);
+        setNotificationCount(prevCount => prevCount + 1);
+      }
+      isInitialLoad = false;
     });
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (location.pathname === "/dashboard/seller/accepted-pickups") {
+      setHasNewPickups(false);
+      setNotificationCount(0);
+    }
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -65,26 +81,26 @@ const Sidebar = () => {
 
   const menuItems = [
     { text: "Home", icon: <Home />, path: "/dashboard/seller" },
-    { text: "Sell Scrap", icon: <Store />, path: "/dashboard/seller/sell-scrap" },
-    { text: "Transform Scrap", icon: <Build />, path: "/dashboard/seller/transform-scrap" },
+    { text: "Sell Scrap", icon: <Store />, path: "/dashboard/seller/scrap-management" },
+    { text: "Transform Scrap", icon: <Build />, path: "/transform-scrap" },
     { 
       text: "Accepted Pickups", 
       icon: (
         <Badge 
-          badgeContent={acceptedPickupsCount} 
-          color="error"
+          badgeContent={hasNewPickups ? notificationCount : 0} 
           sx={{
             "& .MuiBadge-badge": {
               backgroundColor: "#ff4444",
               color: "white",
-              fontWeight: "bold",
-              animation: acceptedPickupsCount > 0 ? "pulse 2s infinite" : "none",
+              right: -3,
+              top: 3,
+              animation: hasNewPickups ? "pulse 2s infinite" : "none",
             },
             "@keyframes pulse": {
               "0%": { transform: "scale(1)" },
               "50%": { transform: "scale(1.2)" },
               "100%": { transform: "scale(1)" },
-            },
+            }
           }}
         >
           <LocalShipping />
@@ -149,25 +165,53 @@ const Sidebar = () => {
       <Divider sx={{ backgroundColor: "rgba(0, 64, 128, 0.2)" }} />
 
       <List sx={{ flexGrow: 1 }}>
-        {menuItems.map((item) => (
+        {menuItems.map((item, index) => (
           <ListItem
             button
-            key={item.text}
+            key={index}
             onClick={() => navigate(item.path)}
             sx={{
-              backgroundColor: location.pathname === item.path ? "rgba(255, 255, 255, 0.1)" : "transparent",
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-              },
-              marginBottom: "8px",
-              borderRadius: "8px",
-              marginX: "8px",
+              "&:hover": { backgroundColor: "rgba(0, 64, 128, 0.1)" },
+              backgroundColor: location.pathname === item.path ? "#42A5F5" : "transparent",
+              color: location.pathname === item.path ? "white" : "#004080",
+              display: "flex",
+              flexDirection: open ? "row" : "column",
+              alignItems: "center",
+              justifyContent: open ? "flex-start" : "center",
+              padding: open ? "10px 16px" : "12px",
+              textAlign: "center",
             }}
           >
-            <ListItemIcon sx={{ color: "white" }}>
+            <ListItemIcon
+              sx={{
+                color: location.pathname === item.path ? "white" : "#004080",
+                minWidth: open ? "40px" : "100%",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
               {item.icon}
             </ListItemIcon>
-            {open && <ListItemText primary={item.text} sx={{ marginLeft: "8px" }} />}
+            {open ? (
+              <ListItemText
+                primary={item.text}
+                sx={{
+                  fontSize: "16px",
+                  fontFamily: "Roboto Slab, serif",
+                  marginLeft: "8px",
+                }}
+              />
+            ) : (
+              <Typography
+                sx={{
+                  fontSize: "12px",
+                  fontFamily: "Roboto Slab, serif",
+                  marginTop: "4px",
+                }}
+              >
+                {item.text}
+              </Typography>
+            )}
           </ListItem>
         ))}
       </List>
