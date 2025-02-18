@@ -393,7 +393,7 @@ const ScrapManagement = () => {
       const userDoc = await getDoc(doc(db, "users", uid));
       if (userDoc.exists()) {
         const { name, ContactNumber } = userDoc.data();
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
           name: name || "",
           contactNumber: ContactNumber || "",
@@ -401,11 +401,41 @@ const ScrapManagement = () => {
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
+      showNotification("Error fetching user data", "error");
     }
   };
 
   const handleDialogOpen = () => {
+    // Reset form data to initial state
+    setFormData({
+      name: "", // We'll fetch this from user data
+      contactNumber: "", // We'll fetch this from user data
+      scrapName: "",
+      address: "",
+      pinCode: "",
+      city: "",
+      state: "",
+      scrapType: "",
+      weight: "",
+      unit: "kg",
+      price: "",
+      image: null
+    });
+
+    // Reset form errors
+    setFormErrors({});
+    
+    // Reset validation error
+    setValidationError("");
+
+    // Open the dialog
     setDialogOpen(true);
+
+    // Fetch user data for name and contact number
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      fetchUserData(currentUser.uid);
+    }
   };
 
   const handleDialogClose = () => {
@@ -1179,27 +1209,31 @@ const ScrapManagement = () => {
             </Button>
           </DialogActions>
         </Dialog>
-        <Snackbar 
-          open={notification.open} 
-          autoHideDuration={4000} 
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={4000}
           onClose={handleCloseNotification}
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
           sx={{
-            '& .MuiSnackbarContent-root': {
-              fontSize: '1.1rem',
-              fontWeight: 'bold',
-              backgroundColor: notification.severity === 'success' ? '#28a745' : 
-                             notification.severity === 'warning' ? '#FFA500' : '#d32f2f',
-              color: '#fff',
-              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px'
-            }
+            "& .MuiSnackbarContent-root": {
+              fontSize: "1.1rem",
+              fontWeight: "bold",
+              backgroundColor:
+                notification.severity === "success"
+                  ? "#28a745"
+                  : notification.severity === "warning"
+                  ? "#FFA500"
+                  : "#d32f2f",
+              color: "#fff",
+              boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
+              borderRadius: "8px",
+            },
           }}
         >
-          <Alert 
-            onClose={handleCloseNotification} 
+          <Alert
+            onClose={handleCloseNotification}
             severity={notification.severity}
-            sx={{ width: '100%' }}
+            sx={{ width: "100%" }}
           >
             {notification.message}
           </Alert>
