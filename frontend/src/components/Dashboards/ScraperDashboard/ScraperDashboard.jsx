@@ -1,171 +1,3 @@
-// import { useEffect, useState } from "react";
-// import { Grid, Card, CardContent, Typography, Box, useMediaQuery } from "@mui/material";
-// import Sidebar from "./ScraperSidebar";
-// import { auth, db, onAuthStateChanged } from "../../../firebaseConfig";
-// import { doc, getDoc } from "firebase/firestore";
-// import { motion } from "framer-motion";
-// import "animate.css";
-
-// const cardVariants = {
-//   initial: { opacity: 0, y: 20 },
-//   animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-//   hover: { scale: 1.05, boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)" },
-// };
-
-// const activityCardVariants = {
-//   initial: { opacity: 0, y: 20 },
-//   animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-//   hover: { scale: 1.02, boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.2)" },
-// };
-
-// const ScraperDashboard = () => {
-//   const [user, setUser] = useState(null);
-//   const [metrics, setMetrics] = useState({
-//     totalScrapCollected: 0,
-//     scheduledPickups: 0,
-//     activeRequests: 0,
-//   });
-
-//   const [recentActivity, setRecentActivity] = useState([]);
-
-//   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-//   const isSmallScreen = useMediaQuery("(max-width: 600px)");
-
-//   useEffect(() => {
-//     setIsSidebarOpen(!isSmallScreen);
-//   }, [isSmallScreen]);
-
-//   const fetchUserData = async (uid) => {
-//     try {
-//       const userDoc = await getDoc(doc(db, "users", uid));
-//       if (userDoc.exists()) {
-//         setUser(userDoc.data());
-//       }
-//     } catch (error) {
-//       console.error("Error fetching user data:", error);
-//     }
-//   };
-
-//   const fetchScraperMetrics = () => {
-//     setMetrics({
-//       totalScrapCollected: Math.floor(Math.random() * 1000), // Replace with Firestore data
-//       scheduledPickups: Math.floor(Math.random() * 10),
-//       activeRequests: Math.floor(Math.random() * 5),
-//     });
-//   };
-
-//   const fetchRecentActivity = () => {
-//     setRecentActivity([
-//       { message: "Pickup scheduled for tomorrow at 10:30 AM", color: "green", time: "1h ago" },
-//       { message: "Scrap weighing 120kg collected from Zone 3", color: "blue", time: "3h ago" },
-//       { message: "Pickup completed at Rajwada Street", color: "orange", time: "6h ago" },
-//       { message: "Assigned to new pickup request", color: "purple", time: "12h ago" },
-//       { message: "Reached the pickup location at Bhanwar Kuan", color: "red", time: "1d ago" },
-//     ]);
-//   };
-
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-//       if (currentUser) {
-//         fetchUserData(currentUser.uid);
-//         fetchScraperMetrics();
-//         fetchRecentActivity();
-//       }
-//     });
-//     return () => unsubscribe();
-//   }, []);
-
-//   return (
-//     <Box className="animate__animated animate__fadeIn" sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
-//       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-//       <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
-//         <Typography
-//           variant="h4"
-//           className="animate__animated animate__fadeInDown"
-//           sx={{ marginBottom: "24px", fontFamily: "Arvo, serif", color: "#004080", display: "flex", justifyContent: "space-between", alignItems: "center" }}
-//         >
-//           Welcome, {user?.name || "Scraper"} to Scraper Dashboard
-//         </Typography>
-
-//         {/* Top Row: Metrics Cards */}
-//         <Grid container spacing={3}>
-//           {[
-//             { label: "Total Scrap Collected", value: `${metrics.totalScrapCollected} kg`, icon: "♻️", color: "#66BB6A" },
-//             { label: "Scheduled Pickups", value: metrics.scheduledPickups, icon: "📅", color: "#29B6F6" },
-//             { label: "Active Requests", value: metrics.activeRequests, icon: "📋", color: "#8E24AA" },
-//           ].map((card, index) => (
-//             <Grid item xs={12} sm={4} key={index}>
-//               <motion.div variants={cardVariants} initial="initial" animate="animate" whileHover="hover">
-//                 <Card className="animate__animated animate__zoomIn" sx={{ borderRadius: "12px", backgroundColor: "white" }}>
-//                   <CardContent>
-//                     <Box sx={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-//                       <Typography variant="subtitle1" sx={{ color: card.color, marginRight: "12px" }}>
-//                         {card.icon}
-//                       </Typography>
-//                       <Typography variant="subtitle1" sx={{ color: "#004080" }}>
-//                         {card.label}
-//                       </Typography>
-//                     </Box>
-//                     <Typography variant="h4" sx={{ color: "#004080", marginTop: "8px" }}>
-//                       {card.value}
-//                     </Typography>
-//                   </CardContent>
-//                 </Card>
-//               </motion.div>
-//             </Grid>
-//           ))}
-//         </Grid>
-
-//         {/* Recent Activity Section */}
-//         <Box sx={{ marginTop: "32px" }}>
-//           <motion.div
-//             variants={activityCardVariants}
-//             initial="initial"
-//             animate="animate"
-//             whileHover="hover"
-//             className="animate__animated animate__fadeInUp"
-//             sx={{
-//               backgroundColor: "white",
-//               borderRadius: "12px",
-//               padding: "16px",
-//               boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
-//             }}
-//           >
-//             <Typography variant="h6" sx={{ fontWeight: "bold", marginBottom: "8px", color: "#004080" }}>
-//               Recent Activity
-//             </Typography>
-//             {recentActivity.map((activity, index) => (
-//               <Box
-//                 key={index}
-//                 sx={{
-//                   display: "flex",
-//                   justifyContent: "space-between",
-//                   alignItems: "center",
-//                   padding: "8px 0",
-//                   borderBottom: index !== recentActivity.length - 1 ? "1px solid #ddd" : "none",
-//                   transition: "background-color 0.3s ease",
-//                   "&:hover": { backgroundColor: "#f0f0f0" },
-//                 }}
-//               >
-//                 <Box sx={{ display: "flex", alignItems: "center" }}>
-//                   <span style={{ color: activity.color, fontSize: "20px", marginRight: "10px" }}>•</span>
-//                   <Typography variant="body1">{activity.message}</Typography>
-//                 </Box>
-//                 <Typography variant="body2" sx={{ color: "gray" }}>
-//                   {activity.time}
-//                 </Typography>
-//               </Box>
-//             ))}
-//           </motion.div>
-//         </Box>
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default ScraperDashboard;
-
 import { useEffect, useState } from "react";
 import {
   Grid,
@@ -208,8 +40,9 @@ const ScraperDashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [newPickup, setNewPickup] = useState(null); // New Pickup Notification
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const isSmallScreen = useMediaQuery("(max-width: 600px)");
   const [loading, setLoading] = useState(true); // Page loading state
+
+  const isSmallScreen = useMediaQuery("(max-width: 600px)");
 
   useEffect(() => {
     setIsSidebarOpen(!isSmallScreen);
@@ -299,6 +132,7 @@ const ScraperDashboard = () => {
         const activities = await Promise.all(
           snapshot.docs.map(async (document) => {
             const pickupData = { id: document.id, ...document.data() };
+            console.log("Pickup Data:", pickupData); // Debug log
             let sellerName = "Unknown Seller";
 
             // Fetch seller details using `userId`
@@ -314,13 +148,47 @@ const ScraperDashboard = () => {
               }
             }
 
+            // Format the timestamp
+            let formattedDate = 'Just now';
+            if (pickupData.createdOn) {
+              try {
+                const timestamp = pickupData.createdOn.toDate();
+                const now = new Date();
+                const diffInMinutes = Math.floor((now - timestamp) / (1000 * 60));
+                const diffInHours = Math.floor(diffInMinutes / 60);
+                const diffInDays = Math.floor(diffInHours / 24);
+
+                if (diffInMinutes < 1) {
+                  formattedDate = 'Just now';
+                } else if (diffInMinutes < 60) {
+                  formattedDate = `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+                } else if (diffInHours < 24) {
+                  formattedDate = `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+                } else if (diffInDays < 7) {
+                  formattedDate = `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+                } else {
+                  formattedDate = new Intl.DateTimeFormat('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  }).format(timestamp);
+                }
+              } catch (error) {
+                console.error("Error formatting date:", error);
+                formattedDate = 'Date not available';
+              }
+            }
+
             return {
               id: document.id,
               message: `New pickup request from ${sellerName} for scrap: ${
                 pickupData.scrapName || "Unknown"
               }`,
               color: "blue",
-              time: "Just now",
+              time: formattedDate
             };
           })
         );
@@ -482,15 +350,19 @@ const ScraperDashboard = () => {
               <Box
                 key={index}
                 sx={{
-                  padding: "8px 0",
+                  padding: "12px 0",
                   borderBottom:
                     index !== recentActivity.length - 1
                       ? "1px solid #ddd"
                       : "none",
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    transition: 'background-color 0.3s'
+                  }
                 }}
               >
-                <Typography variant="body1">{activity.message}</Typography>
-                <Typography variant="body2" sx={{ color: "gray" }}>
+                <Typography variant="body1" sx={{ marginBottom: '4px' }}>{activity.message}</Typography>
+                <Typography variant="body2" sx={{ color: "gray", fontSize: '0.85rem' }}>
                   {activity.time}
                 </Typography>
               </Box>

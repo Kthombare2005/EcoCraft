@@ -32,12 +32,12 @@ const StyledCard = styled(Card)(() => ({
   height: "100%",
   display: "flex",
   flexDirection: "column",
-  borderRadius: "16px",
+  borderRadius: "12px",
   overflow: "hidden",
   transition: "transform 0.3s ease, box-shadow 0.3s ease",
   "&:hover": {
     transform: "translateY(-4px)",
-    boxShadow: "0 12px 24px rgba(0,0,0,0.1)",
+    boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
   },
 }));
 
@@ -51,11 +51,15 @@ const StyledChip = styled(Chip)(() => ({
 }));
 
 const ImageContainer = styled(CardMedia)(() => ({
-  height: 200,
+  height: "100%",
+  width: "100%",
   transition: "transform 0.3s ease",
   "&:hover": {
     transform: "scale(1.05)",
   },
+  backgroundSize: "contain",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
 }));
 
 const ScraperDetailsBox = styled(Paper)(() => ({
@@ -177,7 +181,7 @@ const AcceptedPickups = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 2, sm: 3 },
           backgroundColor: "#f5f5f5",
           minHeight: "100vh",
         }}
@@ -185,7 +189,8 @@ const AcceptedPickups = () => {
         <Typography
           variant="h4"
           sx={{
-            mb: 4,
+            mb: { xs: 2, sm: 3, md: 4 },
+            fontSize: { xs: "1.5rem", sm: "2rem" },
             fontWeight: "bold",
             color: "#1a237e",
             fontFamily: "'Poppins', sans-serif",
@@ -194,20 +199,45 @@ const AcceptedPickups = () => {
           Accepted Pickup Requests
         </Typography>
 
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 2, md: 3 }}>
           {acceptedPickups.map((pickup) => (
-            <Grid item xs={12} md={6} key={pickup.id}>
+            <Grid item xs={12} sm={6} md={6} lg={4} key={pickup.id}>
               <StyledCard>
                 {pickup.scrapDetails?.image ? (
-                  <ImageContainer
-                    image={pickup.scrapDetails.image}
-                    title={pickup.scrapName}
-                  />
+                  <Box 
+                    sx={{ 
+                      position: 'relative',
+                      height: 200,
+                      width: '100%',
+                      backgroundColor: "#f8f9fa",
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      overflow: 'hidden',
+                      padding: '16px',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        width: '90%',
+                        height: '90%',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <ImageContainer
+                        image={pickup.scrapDetails.image}
+                        title={pickup.scrapName}
+                      />
+                    </Box>
+                  </Box>
                 ) : (
                   <Box
                     sx={{
                       height: 200,
-                      backgroundColor: "#f5f5f5",
+                      backgroundColor: "#f8f9fa",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -217,9 +247,16 @@ const AcceptedPickups = () => {
                   </Box>
                 )}
 
-                <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: "600", color: "#1a237e" }}>
+                <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 } }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                    <Typography 
+                      variant="h6"
+                      sx={{ 
+                        fontWeight: "600", 
+                        color: "#1a237e",
+                        fontSize: { xs: '1rem', sm: '1.1rem' }
+                      }}
+                    >
                       {pickup.scrapName}
                     </Typography>
                     <StyledChip
@@ -257,38 +294,45 @@ const AcceptedPickups = () => {
 
                   <Divider sx={{ my: 2 }} />
 
-                  <ScraperDetailsBox elevation={0}>
+                  <ScraperDetailsBox elevation={0} sx={{ p: { xs: 1.5, sm: 2 } }}>
                     <Typography
-                      variant="h6"
+                      variant="subtitle1"
                       sx={{
                         color: "#1a237e",
-                        mb: 2,
+                        mb: 1.5,
                         display: "flex",
                         alignItems: "center",
                         fontWeight: "600",
+                        fontSize: { xs: '0.9rem', sm: '1rem' }
                       }}
                     >
-                      <Person sx={{ mr: 1 }} />
+                      <Person sx={{ mr: 1, fontSize: '1.2rem' }} />
                       Scraper Details
                     </Typography>
 
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1.5 }}>
                       <Avatar
                         sx={{
                           bgcolor: "#1a237e",
-                          mr: 2,
-                          width: 40,
-                          height: 40,
+                          mr: 1.5,
+                          width: 32,
+                          height: 32,
                         }}
                       >
                         {pickup.scraperDetails?.name?.[0] || "D"}
                       </Avatar>
-                      <Typography variant="subtitle1" sx={{ fontWeight: "600" }}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: "600",
+                          fontSize: { xs: '0.875rem', sm: '0.9rem' }
+                        }}
+                      >
                         {pickup.scraperDetails?.name || "Demoscraper"}
                       </Typography>
                     </Box>
 
-                    <Box sx={{ color: "#424242" }}>
+                    <Box sx={{ color: "#424242", fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                       <Typography sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                         <Phone sx={{ mr: 1, color: "#666" }} />
                         {pickup.scraperDetails.contact}
@@ -306,10 +350,9 @@ const AcceptedPickups = () => {
 
                       <ChatButton
                         fullWidth
-                        startIcon={<Chat />}
-                        onClick={() => {
-                          console.log("Chat with scraper:", pickup.scraperId);
-                        }}
+                        size="small"
+                        startIcon={<Chat sx={{ fontSize: '1rem' }} />}
+                        sx={{ mt: 1.5 }}
                       >
                         Chat with Scraper
                       </ChatButton>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Grid,
@@ -14,6 +14,7 @@ import {
   Autocomplete,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import Sidebar from "../Sidebar";
@@ -36,6 +37,7 @@ import LoadingSpinner from "../../../components/LoadingSpinner";
 import { log } from "../../../utils/log";
 import axios from "axios";
 import { updateDoc, getDocs, where, query } from "firebase/firestore";
+import { Error } from "@mui/icons-material";
 
 
 const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
@@ -52,7 +54,8 @@ const ScrapManagement = () => {
   const [selectedScrap, setSelectedScrap] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [nearbyScrapers, setNearbyScrapers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [notification, setNotification] = useState({
     open: false,
@@ -86,6 +89,9 @@ const ScrapManagement = () => {
     image: '',
     pinCode: '',
   });
+
+  const [imageValidating, setImageValidating] = useState(false);
+  const [addressValidating, setAddressValidating] = useState(false);
 
   const showNotification = (message, severity = "info") => {
     setNotification({ open: true, message, severity });
@@ -172,51 +178,6 @@ const ScrapManagement = () => {
     }
   };
 
-  const validateAddress = async (address, city, state) => {
-    const API_KEY = "AIzaSyCcenVOKOAhHj0DO_JmR_bocN9FEebP74M";
-    const fullAddress = `${address}, ${city}, ${state}`;
-
-    try {
-      log("Validating full address:", fullAddress);
-
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json`,
-        {
-          params: {
-            address: fullAddress,
-            key: API_KEY,
-          },
-        }
-      );
-
-      log("Maps API Response:", response.data);
-
-      const results = response.data.results;
-
-      if (results.length > 0) {
-        for (let result of results) {
-          const { formatted_address } = result;
-
-          const isAddressValid =
-            formatted_address.toLowerCase().includes(address.toLowerCase()) &&
-            formatted_address.toLowerCase().includes(city.toLowerCase()) &&
-            formatted_address.toLowerCase().includes(state.toLowerCase());
-
-          if (isAddressValid) {
-            log("Valid address found:", formatted_address);
-            return true;
-          }
-        }
-      }
-
-      console.warn("No valid address found matching the entered details.");
-      return false;
-    } catch (error) {
-      console.error("Error validating address:", error);
-      return false;
-    }
-  };
-
   const validateForm = () => {
     const errors = {};
     const requiredFields = {
@@ -224,7 +185,6 @@ const ScrapManagement = () => {
       address: "Address",
       pinCode: "Pin Code",
       state: "State",
-      city: "City",
       scrapType: "Scrap Type",
       weight: "Weight",
       unit: "Unit",
@@ -237,12 +197,14 @@ const ScrapManagement = () => {
       }
     });
 
-    // Additional validation for pinCode
+    if (cities.length > 0 && !formData.city) {
+      errors.city = "City is required";
+    }
+
     if (formData.pinCode && formData.pinCode.length !== 6) {
       errors.pinCode = "Pin Code must be 6 digits";
     }
 
-    // Additional validation for weight
     if (formData.weight && isNaN(formData.weight)) {
       errors.weight = "Weight must be a number";
     }
@@ -260,26 +222,17 @@ const ScrapManagement = () => {
     setLoading(true);
 
     try {
-      const isAddressValid = await validateAddress(
-        formData.address,
-        formData.city,
-        formData.state
-      );
-
-      if (!isAddressValid) {
-        showNotification("The entered address does not match the selected city and state.", "error");
-        setLoading(false);
-        return;
-      }
-
-      await addDoc(collection(db, "scrapListings"), {
+      const submissionData = {
         ...formData,
+        city: cities.length === 0 ? "" : formData.city,
         createdOn: serverTimestamp(),
-      });
+      };
 
-      handleDialogClose();
-      fetchScrapListingsRealtime();
+      await addDoc(collection(db, "scrapListings"), submissionData);
+
       showNotification("Scrap listing added successfully!", "success");
+      setDialogOpen(false);
+      fetchScrapListingsRealtime();
     } catch (error) {
       console.error("Error adding scrap listing:", error);
       showNotification("Failed to add scrap listing. Please try again.", "error");
@@ -315,40 +268,45 @@ const ScrapManagement = () => {
   };
 
   const fetchScrapListingsRealtime = () => {
-    const scrapListingsRef = collection(db, "scrapListings");
-    const pickupRequestsRef = collection(db, "pickupRequests");
+    try {
+      const scrapListingsRef = collection(db, "scrapListings");
+      const pickupRequestsRef = collection(db, "pickupRequests");
 
-    let statusMap = {};
+      let statusMap = {};
 
-    const unsubscribePickupRequests = onSnapshot(pickupRequestsRef, (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        const pickupData = doc.data();
-        if (pickupData.scrapId) {
-          statusMap[pickupData.scrapId] = pickupData.status;
-        }
+      const unsubscribePickupRequests = onSnapshot(pickupRequestsRef, (snapshot) => {
+        snapshot.docs.forEach((doc) => {
+          const pickupData = doc.data();
+          if (pickupData.scrapId) {
+            statusMap[pickupData.scrapId] = pickupData.status;
+          }
+        });
       });
-    });
 
-    const unsubscribeScrapListings = onSnapshot(scrapListingsRef, (snapshot) => {
-      const listings = snapshot.docs
-        .map((doc) => {
-          const scrapData = doc.data();
-          return {
-            id: doc.id,
-            ...scrapData,
-            pickupStatus: statusMap[doc.id] || "No Pickup Requested"
-          };
-        })
-        // Filter out scraps with "Accepted" status
-        .filter(scrap => statusMap[scrap.id] !== "Accepted");
+      const unsubscribeScrapListings = onSnapshot(scrapListingsRef, (snapshot) => {
+        const listings = snapshot.docs
+          .map((doc) => {
+            const scrapData = doc.data();
+            return {
+              id: doc.id,
+              ...scrapData,
+              pickupStatus: statusMap[doc.id] || "No Pickup Requested"
+            };
+          })
+          .filter(scrap => statusMap[scrap.id] !== "Accepted");
 
-      setScrapListings(listings);
-    });
+        setScrapListings(listings);
+        setLoading(false);
+      });
 
-    return () => {
-      unsubscribePickupRequests();
-      unsubscribeScrapListings();
-    };
+      return () => {
+        unsubscribePickupRequests();
+        unsubscribeScrapListings();
+      };
+    } catch (err) {
+      setError(err.message || 'Failed to fetch data');
+      setLoading(false);
+    }
   };
 
   const scrapTypes = [
@@ -366,6 +324,23 @@ const ScrapManagement = () => {
   ];
 
   const weightUnits = ["kg", "g", "ton", "lb"];
+
+  const fetchUserData = useCallback(async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const { name, ContactNumber } = userDoc.data();
+        setFormData(prev => ({
+          ...prev,
+          name: name || "",
+          contactNumber: ContactNumber || "",
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      showNotification("Error fetching user data", "error");
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -386,30 +361,12 @@ const ScrapManagement = () => {
       unsubscribeAuth();
       unsubscribe();
     };
-  }, []);
-
-  const fetchUserData = async (uid) => {
-    try {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (userDoc.exists()) {
-        const { name, ContactNumber } = userDoc.data();
-        setFormData(prev => ({
-          ...prev,
-          name: name || "",
-          contactNumber: ContactNumber || "",
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      showNotification("Error fetching user data", "error");
-    }
-  };
+  }, [fetchUserData]);
 
   const handleDialogOpen = () => {
-    // Reset form data to initial state
     setFormData({
-      name: "", // We'll fetch this from user data
-      contactNumber: "", // We'll fetch this from user data
+      name: "",
+      contactNumber: "",
       scrapName: "",
       address: "",
       pinCode: "",
@@ -422,16 +379,12 @@ const ScrapManagement = () => {
       image: null
     });
 
-    // Reset form errors
     setFormErrors({});
     
-    // Reset validation error
     setValidationError("");
 
-    // Open the dialog
     setDialogOpen(true);
 
-    // Fetch user data for name and contact number
     const currentUser = auth.currentUser;
     if (currentUser) {
       fetchUserData(currentUser.uid);
@@ -459,13 +412,11 @@ const ScrapManagement = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Clear error for the field being typed in
     setFormErrors(prev => ({
       ...prev,
       [name]: ''
     }));
 
-    // Special validation for weight field
     if (name === "weight" && !/^[0-9]*$/.test(value)) return;
 
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -539,7 +490,7 @@ const ScrapManagement = () => {
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Clear image error
+      setImageValidating(true);
       setFormErrors(prev => ({
         ...prev,
         image: ''
@@ -549,32 +500,108 @@ const ScrapManagement = () => {
       reader.onload = async () => {
         if (!formData.scrapType) {
           showNotification("Please select a scrap type before uploading an image.", "warning");
+          setImageValidating(false);
           return;
         }
 
         const imageData = reader.result.split(",")[1];
 
-        const isValid = await validateImageWithIDX(
-          imageData,
-          formData.scrapType
-        );
-
-        if (isValid) {
-          setFormData((prev) => ({ ...prev, image: reader.result }));
-          setValidationError("");
-          showNotification("✅ Image validated successfully!", "success");
-        } else {
-          setFormData((prev) => ({ ...prev, image: null }));
-          setValidationError(
-            "❌ The uploaded image is not relevant to the selected scrap type."
+        try {
+          const isValid = await validateImageWithIDX(
+            imageData,
+            formData.scrapType
           );
-          showNotification("The uploaded image is not relevant to the selected scrap type.", "error");
+
+          if (isValid) {
+            setFormData((prev) => ({ ...prev, image: reader.result }));
+            setValidationError("");
+            showNotification("✅ Image validated successfully!", "success");
+          } else {
+            setFormData((prev) => ({ ...prev, image: null }));
+            setValidationError(
+              "❌ The uploaded image is not relevant to the selected scrap type."
+            );
+            showNotification("The uploaded image is not relevant to the selected scrap type.", "error");
+          }
+        } finally {
+          setImageValidating(false);
         }
       };
 
       reader.readAsDataURL(file);
     }
   };
+
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          backgroundColor: "#f5f5f5",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999
+        }}
+      >
+        <CircularProgress 
+          size={40}
+          thickness={4}
+          sx={{ 
+            color: "#1a237e",
+            '@keyframes pulse': {
+              '0%': {
+                transform: 'scale(0.95)',
+                boxShadow: '0 0 0 0 rgba(26, 35, 126, 0.7)',
+              },
+              '70%': {
+                transform: 'scale(1)',
+                boxShadow: '0 0 0 10px rgba(26, 35, 126, 0)',
+              },
+              '100%': {
+                transform: 'scale(0.95)',
+                boxShadow: '0 0 0 0 rgba(26, 35, 126, 0)',
+              },
+            },
+            animation: 'pulse 2s infinite',
+          }}
+        />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box 
+        sx={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          height: "100vh",
+          backgroundColor: "#f5f5f5",
+          color: "#d32f2f",
+          fontWeight: "500",
+          fontSize: "1.1rem"
+        }}
+      >
+        <Typography 
+          color="error" 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Error /> {error}
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
@@ -1057,7 +1084,6 @@ const ScrapManagement = () => {
               <Grid item xs={12} sm={6}>
                 <Autocomplete
                   fullWidth
-                  required
                   options={cities}
                   value={formData.city}
                   onChange={(event, newValue) => {
@@ -1070,11 +1096,10 @@ const ScrapManagement = () => {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="City"
-                      required
+                      label={cities.length > 0 ? "City *" : "City"}
                       variant="outlined"
                       error={!!formErrors.city}
-                      helperText={formErrors.city}
+                      helperText={formErrors.city || (cities.length === 0 && formData.state ? "No cities available for selected state" : "")}
                     />
                   )}
                 />
@@ -1137,6 +1162,7 @@ const ScrapManagement = () => {
                   variant="contained"
                   component="label"
                   fullWidth
+                  disabled={imageValidating}
                   sx={{
                     backgroundColor: "#1976d2",
                     color: "white",
@@ -1148,10 +1174,25 @@ const ScrapManagement = () => {
                       transform: "scale(1.05)",
                       transition: "transform 0.2s",
                     },
+                    position: 'relative',
                   }}
                 >
-                  Upload Image
-                  <input type="file" hidden onChange={handleFileChange} />
+                  {imageValidating ? (
+                    <>
+                      Validating Image
+                      <CircularProgress
+                        size={24}
+                        sx={{
+                          color: 'white',
+                          position: 'absolute',
+                          right: '10px',
+                        }}
+                      />
+                    </>
+                  ) : (
+                    'Upload Image'
+                  )}
+                  <input type="file" hidden onChange={handleFileChange} accept="image/*" />
                 </Button>
                 {formData.image && (
                   <Box sx={{ marginTop: "16px", textAlign: "center" }}>

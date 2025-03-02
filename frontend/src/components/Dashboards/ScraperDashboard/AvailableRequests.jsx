@@ -1,170 +1,3 @@
-// import { useEffect, useState } from "react";
-// import { db, auth } from "../../../firebaseConfig";
-// import { collection, query, where, onSnapshot, getDoc, doc } from "firebase/firestore";
-// import {
-//   Typography,
-//   Grid,
-//   Card,
-//   CardContent,
-//   CardMedia,
-//   Box,
-//   Button,
-//   Dialog,
-//   DialogTitle,
-//   DialogContent,
-//   DialogActions,
-//   CircularProgress,
-// } from "@mui/material";
-// import Sidebar from "./ScraperSidebar";
-// import { motion } from "framer-motion";
-// import "animate.css";
-
-// const AvailableRequests = () => {
-//   const [requests, setRequests] = useState([]);
-//   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-//   const [selectedRequest, setSelectedRequest] = useState(null);
-//   const [loading, setLoading] = useState(true); // Loading state
-
-//   useEffect(() => {
-//     const fetchPickupRequests = async () => {
-//       const user = auth.currentUser;
-//       if (!user) return;
-
-//       setLoading(true); // Start loading
-//       setTimeout(() => setLoading(false), 800); // Simulate load delay
-
-//       const q = query(collection(db, "pickupRequests"), where("scraperId", "==", user.uid));
-//       onSnapshot(q, async (snapshot) => {
-//         const pickupData = [];
-
-//         for (let docSnap of snapshot.docs) {
-//           const requestData = docSnap.data();
-
-//           // Fetch seller details using userId from pickupRequests
-//           const sellerDocRef = doc(db, "users", requestData.userId);
-//           const sellerDoc = await getDoc(sellerDocRef);
-//           const sellerData = sellerDoc.exists() ? sellerDoc.data() : { name: "Unknown Seller" };
-
-//           pickupData.push({
-//             id: docSnap.id,
-//             ...requestData,
-//             sellerName: sellerData.name,
-//             sellerContact: sellerData.ContactNumber || "N/A",
-//           });
-//         }
-
-//         setRequests(pickupData);
-//         setLoading(false); // Stop loading after fetching
-//       });
-//     };
-
-//     fetchPickupRequests();
-//   }, []);
-
-//   const handleOpenDetails = (request) => {
-//     setSelectedRequest(request);
-//   };
-
-//   const handleCloseDetails = () => {
-//     setSelectedRequest(null);
-//   };
-
-//   return (
-//     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
-//       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-//       <Box sx={{ flexGrow: 1, padding: "24px", overflowY: "auto" }}>
-//         <Typography variant="h4" sx={{ fontWeight: "bold", color: "#004080", fontFamily: "Arvo, serif", marginBottom: "20px" }}>
-//           Available Pickup Requests
-//         </Typography>
-
-//         {loading ? (
-//           <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "60vh" }}>
-//             <CircularProgress size={60} sx={{ color: "#004080" }} />
-//           </Box>
-//         ) : (
-//           <Grid container spacing={3}>
-//             {requests.length > 0 ? (
-//               requests.map((request) => (
-//                 <Grid item xs={12} sm={6} md={4} key={request.id}>
-//                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} whileHover={{ scale: 1.05 }}>
-//                     <Card sx={{ borderRadius: "12px", backgroundColor: "white", boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)" }}>
-//                       {request.image ? (
-//                         <CardMedia component="img" height="200" image={request.image} alt={request.scrapName} sx={{ borderRadius: "12px 12px 0 0" }} />
-//                       ) : (
-//                         <Box sx={{ height: "200px", backgroundColor: "#e0e0e0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-//                           <Typography variant="h6" sx={{ color: "#888" }}>No Image Available</Typography>
-//                         </Box>
-//                       )}
-//                       <CardContent>
-//                         <Typography variant="h6" sx={{ fontWeight: "bold", color: "#004080" }}>
-//                           {request.scrapName}
-//                         </Typography>
-//                         <Typography variant="body2">Seller: {request.sellerName}</Typography>
-//                         <Typography variant="body2">Location: {request.city}, {request.state}</Typography>
-//                         <Typography variant="body2">Weight: {request.weight} {request.unit}</Typography>
-//                         <Typography variant="body2" sx={{ fontWeight: "bold", color: "#28a745" }}>
-//                           ₹{request.price || "N/A"}
-//                         </Typography>
-//                         <Button
-//                           variant="contained"
-//                           color="primary"
-//                           sx={{ marginTop: "10px", width: "100%" }}
-//                           onClick={() => handleOpenDetails(request)}
-//                         >
-//                           View Details
-//                         </Button>
-//                       </CardContent>
-//                     </Card>
-//                   </motion.div>
-//                 </Grid>
-//               ))
-//             ) : (
-//               <Typography variant="body1" sx={{ textAlign: "center", color: "gray", fontStyle: "italic", marginTop: "20px" }}>
-//                 No pickup requests available.
-//               </Typography>
-//             )}
-//           </Grid>
-//         )}
-
-//         {/* Dialog for Viewing Full Details */}
-//         <Dialog open={!!selectedRequest} onClose={handleCloseDetails} fullWidth>
-//           {selectedRequest && (
-//             <>
-//               <DialogTitle sx={{ fontWeight: "bold", textAlign: "center", color: "#004080" }}>
-//                 Pickup Request Details
-//               </DialogTitle>
-//               <DialogContent>
-//                 {selectedRequest.image && (
-//                   <Box sx={{ textAlign: "center", marginBottom: "16px" }}>
-//                     <img src={selectedRequest.image} alt="Scrap" style={{ maxWidth: "100%", borderRadius: "8px" }} />
-//                   </Box>
-//                 )}
-//                 <Typography variant="h6" sx={{ fontWeight: "bold", color: "#004080" }}>
-//                   Scrap Name: {selectedRequest.scrapName}
-//                 </Typography>
-//                 <Typography>Scrap Type: {selectedRequest.scrapType}</Typography>
-//                 <Typography>Weight: {selectedRequest.weight} {selectedRequest.unit}</Typography>
-//                 <Typography>Price: ₹{selectedRequest.price}</Typography>
-//                 <Typography>Location: {selectedRequest.city}, {selectedRequest.state}</Typography>
-//                 <Typography>Address: {selectedRequest.address}</Typography>
-//                 <Typography>Seller: {selectedRequest.sellerName}</Typography>
-//                 <Typography>Contact: {selectedRequest.sellerContact}</Typography>
-//               </DialogContent>
-//               <DialogActions>
-//                 <Button onClick={handleCloseDetails} color="primary" variant="contained">
-//                   Close
-//                 </Button>
-//               </DialogActions>
-//             </>
-//           )}
-//         </Dialog>
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default AvailableRequests;
-
 import { useEffect, useState } from "react";
 import { db, auth } from "../../../firebaseConfig";
 import {
@@ -174,6 +7,8 @@ import {
   onSnapshot,
   getDoc,
   doc,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   Typography,
@@ -189,12 +24,22 @@ import {
   DialogActions,
   Backdrop,
   CircularProgress,
+  TextField,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import Sidebar from "./ScraperSidebar";
 import { motion } from "framer-motion";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import "animate.css";
-import { updateDoc } from "firebase/firestore";
-import { Snackbar, Alert } from "@mui/material";
+import "./AvailableRequests.css";
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  hover: { scale: 1.02, boxShadow: "0px 8px 15px rgba(0, 0, 0, 0.1)" },
+};
 
 const AvailableRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -206,7 +51,13 @@ const AvailableRequests = () => {
     message: "",
     severity: "info",
   });
-  
+  const [approvalDialog, setApprovalDialog] = useState({
+    open: false,
+    requestId: null,
+    type: "", // 'approve' or 'decline'
+    dateTime: new Date(),
+    error: "",
+  });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -216,8 +67,7 @@ const AvailableRequests = () => {
 
     const q = query(
       collection(db, "pickupRequests"),
-      where("scraperId", "==", user.uid),
-      where("status", "==", "Pending Approval") // ✅ Fix: Match Firestore status field
+      where("status", "==", "Pending Approval")
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -225,8 +75,7 @@ const AvailableRequests = () => {
 
       for (let docSnap of snapshot.docs) {
         const requestData = docSnap.data();
-        if (requestData.status !== "Pending Approval") continue; // ✅ Ensure only Pending Approval requests are added
-
+        
         const sellerDocRef = doc(db, "users", requestData.userId);
         const sellerDoc = await getDoc(sellerDocRef);
         const sellerData = sellerDoc.exists()
@@ -260,48 +109,79 @@ const AvailableRequests = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe(); // ✅ Cleanup Firestore listener when component unmounts
+    return () => unsubscribe();
   }, []);
 
-  const handleOpenDetails = (request) => {
-    setSelectedRequest(request);
+  const handleApprove = async (requestId) => {
+    setApprovalDialog({
+      open: true,
+      requestId,
+      type: "approve",
+      dateTime: new Date(),
+      error: "",
+    });
   };
 
-  const handleApprove = async (requestId) => {
+  const handleDecline = async (requestId) => {
+    setApprovalDialog({
+      open: true,
+      requestId,
+      type: "decline",
+      dateTime: new Date(),
+      error: "",
+    });
+  };
+
+  const handleSubmitAction = async () => {
     try {
+      const { requestId, type, dateTime } = approvalDialog;
+
+      // Validate date/time for approval
+      if (type === "approve") {
+        const now = new Date();
+        if (dateTime < now) {
+          setApprovalDialog((prev) => ({
+            ...prev,
+            error: "Please select a future date and time",
+          }));
+          return;
+        }
+      }
+
       await updateDoc(doc(db, "pickupRequests", requestId), {
-        status: "Accepted", // ✅ Ensure correct status is used
+        status: type === "approve" ? "Accepted" : "Declined",
+        scheduledDateTime: dateTime,
+        updatedAt: serverTimestamp(),
+        scraperId: auth.currentUser.uid,
       });
 
-      // ✅ Immediately remove from UI
       setRequests((prevRequests) =>
         prevRequests.filter((req) => req.id !== requestId)
       );
 
       setSnackbar({
         open: true,
-        message: "Request accepted successfully! Moved to Accepted Requests ✅",
-        severity: "success",
+        message:
+          type === "approve"
+            ? "Request accepted and scheduled successfully! ✅"
+            : "Request declined successfully! ❌",
+        severity: type === "approve" ? "success" : "warning",
+      });
+
+      setApprovalDialog({
+        open: false,
+        requestId: null,
+        type: "",
+        dateTime: null,
+        error: "",
       });
     } catch (error) {
-      console.error("Error approving request:", error);
+      console.error("Error processing request:", error);
       setSnackbar({
         open: true,
-        message: "Failed to approve pickup request.",
+        message: "Failed to process request. Please try again.",
         severity: "error",
       });
-    }
-  };
-
-  const handleDecline = async (requestId) => {
-    try {
-      await db.collection("pickupRequests").doc(requestId).update({
-        status: "Declined",
-      });
-      alert("Pickup request declined successfully! ❌");
-    } catch (error) {
-      console.error("Error declining request:", error);
-      alert("Failed to decline pickup request.");
     }
   };
 
@@ -329,308 +209,546 @@ const AvailableRequests = () => {
           Available Pickup Requests
         </Typography>
 
-        {/* Unified Global Loader */}
         <Backdrop
           sx={{
             color: "#004080",
             zIndex: 9999,
             backgroundColor: "rgba(255, 255, 255, 0.9)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
           }}
           open={loading}
         >
-          <CircularProgress size={80} />
-          <Typography
-            sx={{ marginTop: "10px", fontWeight: "bold", color: "#004080" }}
-          >
-            Fetching Pickup Requests...
-          </Typography>
+          <CircularProgress color="inherit" />
         </Backdrop>
 
-        {/* Main Content */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.5 } }}
-        >
+        {requests.length === 0 && !loading ? (
+          <Typography
+            variant="h6"
+            sx={{
+              textAlign: "center",
+              color: "#666",
+              marginTop: "40px",
+            }}
+          >
+            No available pickup requests at the moment.
+          </Typography>
+        ) : (
           <Grid container spacing={3}>
-            {requests.length > 0 ? (
-              requests.map((request) => (
-                <Grid item xs={12} sm={6} md={4} key={request.id}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ scale: 1.05 }}
+            {requests.map((request) => (
+              <Grid item xs={12} sm={6} md={4} key={request.id}>
+                <motion.div
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  whileHover="hover"
+                >
+                  <Card
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      borderRadius: "16px",
+                      overflow: "hidden",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      transition: "all 0.3s ease",
+                      background: "linear-gradient(to bottom right, #ffffff, #f8f9fa)",
+                      "&:hover": {
+                        transform: "translateY(-5px)",
+                        boxShadow: "0 12px 20px rgba(0,0,0,0.15)",
+                      }
+                    }}
                   >
-                    <Card
-                      sx={{
-                        borderRadius: "12px",
-                        backgroundColor: "white",
-                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                      }}
-                    >
-                      {request.image ? (
+                    {request.image ? (
+                      <Box sx={{ position: "relative", paddingTop: "56.25%" }}>
                         <CardMedia
                           component="img"
                           image={request.image}
-                          alt={request.scrapName}
+                          alt={request.scrapType}
                           sx={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
                             width: "100%",
-                            height: { xs: "180px", sm: "220px", md: "250px" }, // ✅ Responsive height
-                            objectFit: "cover", // ✅ Ensures image fills the area correctly
-                            borderRadius: "12px 12px 0 0",
+                            height: "100%",
+                            objectFit: "cover"
                           }}
                         />
-                      ) : (
                         <Box
                           sx={{
-                            height: "200px",
-                            backgroundColor: "#e0e0e0",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            position: "absolute",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
+                            color: "white",
+                            padding: "20px 16px 12px",
                           }}
                         >
-                          <Typography variant="h6" sx={{ color: "#888" }}>
-                            No Image Available
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: "bold",
+                              textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            {request.scrapType}
                           </Typography>
                         </Box>
-                      )}
-                      <CardContent>
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          height: "140px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#e3f2fd",
+                          color: "#004080",
+                        }}
+                      >
+                        <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                          {request.scrapType}
+                        </Typography>
+                      </Box>
+                    )}
+                    <CardContent 
+                      sx={{ 
+                        flexGrow: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        padding: "20px",
+                      }}
+                    >
+                      <Box sx={{ mb: 2 }}>
                         <Typography
-                          variant="h6"
+                          variant="body1"
                           sx={{
-                            fontWeight: "bold",
+                            fontWeight: "500",
                             color: "#004080",
-                            textAlign: "center", // 🔥 Center Align Scrap Name
-                          }}
-                        >
-                          {request.scrapName}
-                        </Typography>
-                        <Typography variant="body1">
-                          <strong>Seller:</strong> {request.sellerName}
-                        </Typography>
-                        <Typography variant="body1">
-                          <strong>Location:</strong> {request.city},{" "}
-                          {request.state}
-                        </Typography>
-                        <Typography variant="body1">
-                          <strong>Address:</strong> {request.address}{" "}
-                          {/* 🔥 Address Added */}
-                        </Typography>
-                        <Typography variant="body1">
-                          <strong>Weight:</strong> {request.weight}{" "}
-                          {request.unit}
-                        </Typography>
-
-                        {/* 🔥 Buttons for Approve, Decline & View Details */}
-                        <Box
-                          sx={{
                             display: "flex",
-                            justifyContent: "space-between",
-                            marginTop: "10px",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 1
                           }}
                         >
-                          <Button
-                            variant="contained"
-                            color="success"
-                            sx={{ width: "32%" }}
-                            onClick={() => handleApprove(request.id)}
-                          >
-                            ✅ Approve
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="error"
-                            sx={{ width: "32%" }}
-                            onClick={() => handleDecline(request.id)}
-                          >
-                            ❌ Decline
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            sx={{ width: "32%" }}
-                            onClick={() => handleOpenDetails(request)}
-                          >
-                            🔍 View Details
-                          </Button>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </Grid>
-              ))
-            ) : (
-              <Typography
-                variant="body1"
-                sx={{
-                  textAlign: "center",
-                  color: "gray",
-                  fontStyle: "italic",
-                  marginTop: "20px",
-                }}
-              >
-                No pickup requests available.
-              </Typography>
-            )}
-          </Grid>
-        </motion.div>
+                          👤 {request.sellerName}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#666",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1
+                          }}
+                        >
+                          📞 {request.sellerContact}
+                        </Typography>
+                      </Box>
 
-        {/* Dialog for Viewing Full Details */}
-        <Dialog
-          open={!!selectedRequest}
+                      <Box sx={{ 
+                        display: "flex", 
+                        flexWrap: "wrap", 
+                        gap: 2, 
+                        mb: 2 
+                      }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            backgroundColor: "#e3f2fd",
+                            color: "#004080",
+                            padding: "4px 12px",
+                            borderRadius: "16px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5
+                          }}
+                        >
+                          ⚖️ {request.weight} {request.unit}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            backgroundColor: "#e8f5e9",
+                            color: "#2e7d32",
+                            padding: "4px 12px",
+                            borderRadius: "16px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5
+                          }}
+                        >
+                          📍 {request.city}
+                        </Typography>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                          gap: 1,
+                          mt: "auto",
+                        }}
+                      >
+                        <Button
+                          variant="contained"
+                          onClick={() => handleApprove(request.id)}
+                          sx={{
+                            backgroundColor: "#004080",
+                            color: "white",
+                            "&:hover": {
+                              backgroundColor: "#003366",
+                              transform: "translateY(-2px)",
+                              boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => handleDecline(request.id)}
+                          sx={{
+                            color: "#ff4444",
+                            borderColor: "#ff4444",
+                            "&:hover": {
+                              borderColor: "#cc3333",
+                              backgroundColor: "rgba(255,68,68,0.1)",
+                              transform: "translateY(-2px)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          Decline
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => setSelectedRequest(request)}
+                          sx={{
+                            color: "#004080",
+                            borderColor: "#004080",
+                            "&:hover": {
+                              borderColor: "#003366",
+                              backgroundColor: "rgba(0,64,128,0.1)",
+                              transform: "translateY(-2px)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {/* Details Dialog */}
+        <Dialog 
+          open={!!selectedRequest} 
           onClose={handleCloseDetails}
+          maxWidth="sm"
           fullWidth
-          maxWidth="sm" // ✅ Ensures Dialog fits on all screen sizes
+          PaperProps={{
+            sx: {
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "500px"
+            }
+          }}
         >
           {selectedRequest && (
             <>
               <DialogTitle
                 sx={{
+                  color: "#004080",
+                  fontFamily: "Arvo, serif",
+                  fontSize: "24px",
                   fontWeight: "bold",
                   textAlign: "center",
-                  color: "#004080",
-                  fontSize: { xs: "18px", sm: "22px" }, // ✅ Responsive text size
+                  pb: 2,
+                  borderBottom: "1px solid #E3F2FD"
                 }}
               >
-                Pickup Request Details
+                Scrap Details
               </DialogTitle>
-              <DialogContent
-                sx={{
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                {/* 🔥 Responsive Dialog Image */}
+              <DialogContent sx={{ mt: 3 }}>
                 {selectedRequest.image && (
                   <Box
                     sx={{
-                      textAlign: "center",
-                      marginBottom: "16px",
                       width: "100%",
+                      height: "250px",
+                      overflow: "hidden",
+                      borderRadius: "8px",
+                      mb: 3,
+                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
                     }}
                   >
                     <img
                       src={selectedRequest.image}
-                      alt="Scrap"
+                      alt={selectedRequest.scrapType}
                       style={{
                         width: "100%",
-                        maxWidth: "350px",
-                        height: "auto",
-                        borderRadius: "8px",
-                      }} // ✅ Responsive image
+                        height: "100%",
+                        objectFit: "cover"
+                      }}
                     />
                   </Box>
                 )}
 
-                {/* 🔥 Improved Spacing & Text Responsiveness */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                    width: "100%",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#004080",
-                      textAlign: "center",
-                      fontSize: { xs: "16px", sm: "18px" },
-                    }} // ✅ Adaptive font size
-                  >
-                    Scrap Name:{" "}
-                    <span style={{ fontWeight: "normal", color: "#000" }}>
-                      {selectedRequest.scrapName}
-                    </span>
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Scrap Type:</strong> {selectedRequest.scrapType}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Weight:</strong> {selectedRequest.weight}{" "}
-                    {selectedRequest.unit}
-                  </Typography>
-                  {selectedRequest.price && (
-                    <Typography
-                      variant="body1"
-                      sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                    >
-                      <strong>Price:</strong> ₹{selectedRequest.price}
+                <Box sx={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: 2,
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Scrap Name:
                     </Typography>
-                  )}
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Location:</strong> {selectedRequest.city},{" "}
-                    {selectedRequest.state}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Address:</strong> {selectedRequest.address}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Seller:</strong> {selectedRequest.sellerName}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontSize: { xs: "14px", sm: "16px" } }}
-                  >
-                    <strong>Contact:</strong> {selectedRequest.sellerContact}
-                  </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.scrapName || "Not provided"}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Scrap Type:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.scrapType}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Weight:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.weight} {selectedRequest.unit}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Address:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.address}, {selectedRequest.city}, {selectedRequest.state}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Contact Number:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.sellerContact}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Posted On:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.createdOn?.toDate().toLocaleString("en-IN", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true
+                      })}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography sx={{ 
+                      width: "150px", 
+                      color: "#666",
+                      fontWeight: "500"
+                    }}>
+                      Seller Name:
+                    </Typography>
+                    <Typography sx={{ flex: 1, color: "#000" }}>
+                      {selectedRequest.sellerName}
+                    </Typography>
+                  </Box>
                 </Box>
               </DialogContent>
-
-              {/* 🔥 Responsive Buttons */}
-              <DialogActions
-                sx={{
-                  padding: "12px",
-                  justifyContent: "center",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: "10px",
-                }}
-              >
+              <DialogActions sx={{ 
+                padding: "16px", 
+                borderTop: "1px solid #E3F2FD",
+                justifyContent: "center"
+              }}>
                 <Button
                   onClick={handleCloseDetails}
-                  color="primary"
                   variant="contained"
                   sx={{
-                    width: { xs: "100%", sm: "auto" }, // ✅ Full width on mobile, auto on larger screens
-                    padding: { xs: "10px", sm: "12px 24px" }, // ✅ Adjust padding for better touch experience
-                    fontSize: { xs: "14px", sm: "16px" }, // ✅ Ensures readable button text
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    minWidth: "120px",
+                    "&:hover": { 
+                      backgroundColor: "#c82333"
+                    }
                   }}
                 >
-                  Close
+                  CLOSE
                 </Button>
               </DialogActions>
             </>
           )}
         </Dialog>
 
+        {/* Approval/Decline Dialog */}
+        <Dialog
+          open={approvalDialog.open}
+          onClose={() =>
+            setApprovalDialog({
+              open: false,
+              requestId: null,
+              type: "",
+              dateTime: null,
+              error: "",
+            })
+          }
+          PaperProps={{
+            style: {
+              borderRadius: "12px",
+              padding: "16px",
+              minWidth: "350px",
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              color: "#004080",
+              fontFamily: "Arvo, serif",
+              borderBottom: "2px solid #E3F2FD",
+              pb: 2,
+            }}
+          >
+            {approvalDialog.type === "approve"
+              ? "Schedule Pickup"
+              : "Decline Request"}
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            {approvalDialog.type === "approve" && (
+              <>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ mb: 2, color: "#004080" }}
+                >
+                  Please select pickup date and time:
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <DatePicker
+                    selected={approvalDialog.dateTime}
+                    onChange={(date) =>
+                      setApprovalDialog((prev) => ({
+                        ...prev,
+                        dateTime: date,
+                        error: "",
+                      }))
+                    }
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    dateFormat="MMMM d, yyyy h:mm aa"
+                    minDate={new Date()}
+                    customInput={
+                      <TextField
+                        fullWidth
+                        error={!!approvalDialog.error}
+                        helperText={approvalDialog.error}
+                        InputProps={{
+                          sx: {
+                            "&:hover": {
+                              borderColor: "#004080",
+                            },
+                          },
+                        }}
+                      />
+                    }
+                  />
+                </Box>
+              </>
+            )}
+            {approvalDialog.type === "decline" && (
+              <Typography>
+                Are you sure you want to decline this pickup request?
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ padding: "16px", borderTop: "1px solid #E3F2FD" }}>
+            <Button
+              onClick={() =>
+                setApprovalDialog({
+                  open: false,
+                  requestId: null,
+                  type: "",
+                  dateTime: null,
+                  error: "",
+                })
+              }
+              sx={{
+                color: "#666",
+                "&:hover": { backgroundColor: "#f5f5f5" },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitAction}
+              variant="contained"
+              sx={{
+                backgroundColor:
+                  approvalDialog.type === "approve" ? "#004080" : "#ff4444",
+                "&:hover": {
+                  backgroundColor:
+                    approvalDialog.type === "approve" ? "#003366" : "#cc3333",
+                },
+              }}
+            >
+              {approvalDialog.type === "approve" ? "Schedule Pickup" : "Decline"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
         <Snackbar
           open={snackbar.open}
-          autoHideDuration={4000}
+          autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
           <Alert
             onClose={() => setSnackbar({ ...snackbar, open: false })}

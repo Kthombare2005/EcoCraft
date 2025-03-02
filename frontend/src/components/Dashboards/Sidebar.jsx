@@ -11,7 +11,6 @@ const Sidebar = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const [acceptedPickupsCount, setAcceptedPickupsCount] = useState(0);
   const [hasNewPickups, setHasNewPickups] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
 
@@ -55,8 +54,6 @@ const Sidebar = () => {
 
     let isInitialLoad = true;
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setAcceptedPickupsCount(snapshot.size);
-      
       if (!isInitialLoad && snapshot.docChanges().length > 0) {
         setHasNewPickups(true);
         setNotificationCount(prevCount => prevCount + 1);
