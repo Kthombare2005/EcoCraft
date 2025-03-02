@@ -348,7 +348,7 @@ const AvailableRequests = () => {
 
                       <Box sx={{ 
                         display: "flex", 
-                        flexWrap: "wrap", 
+                        flexDirection: "column", 
                         gap: 2, 
                         mb: 2 
                       }}>
@@ -361,7 +361,8 @@ const AvailableRequests = () => {
                             borderRadius: "16px",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: 0.5
+                            gap: 0.5,
+                            width: "fit-content"
                           }}
                         >
                           ⚖️ {request.weight} {request.unit}
@@ -371,14 +372,22 @@ const AvailableRequests = () => {
                           sx={{
                             backgroundColor: "#e8f5e9",
                             color: "#2e7d32",
-                            padding: "4px 12px",
+                            padding: "8px 12px",
                             borderRadius: "16px",
                             display: "inline-flex",
-                            alignItems: "center",
-                            gap: 0.5
+                            alignItems: "flex-start",
+                            gap: 0.5,
+                            width: "100%",
+                            lineHeight: "1.4",
+                            "& svg": {
+                              marginTop: "2px"
+                            }
                           }}
                         >
-                          📍 {request.city}
+                          <span style={{ flexShrink: 0 }}>📍</span>
+                          <span style={{ wordBreak: "break-word" }}>
+                            {`${request.address}, ${request.city}, ${request.state}${request.pinCode ? ` - ${request.pinCode}` : ''}`}
+                          </span>
                         </Typography>
                       </Box>
 

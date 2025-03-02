@@ -34,13 +34,17 @@ import { db } from "../../../firebaseConfig"; // Ensure db is imported
 
 const ScraperSidebar = () => {
   const isSmallScreen = useMediaQuery("(max-width: 600px)");
-  const [open, setOpen] = useState(!isSmallScreen);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [nextPage, setNextPage] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [scrapRequestsCount, setScrapRequestsCount] = useState(0);
   // const [acceptedRequestsCount, setAcceptedRequestsCount] = useState(0); // 🔥 Add this line
+
+  useEffect(() => {
+    setOpen(!isSmallScreen);
+  }, [isSmallScreen]);
 
   const handleNavigation = (path) => {
     if (location.pathname !== path) {

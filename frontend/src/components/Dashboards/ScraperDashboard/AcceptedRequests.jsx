@@ -53,6 +53,42 @@ const AcceptedRequests = () => {
 
       if (scrapDoc.exists()) {
         const scrapData = scrapDoc.data();
+        
+        // Format the date safely
+        let formattedDate = "Not available";
+        if (request.createdOn) {
+          if (request.createdOn.toDate) {
+            // If it's a Firestore timestamp
+            formattedDate = request.createdOn.toDate().toLocaleString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true
+            });
+          } else if (request.createdOn instanceof Date) {
+            // If it's already a Date object
+            formattedDate = request.createdOn.toLocaleString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true
+            });
+          } else if (typeof request.createdOn === 'string') {
+            // If it's a string, try to parse it
+            formattedDate = new Date(request.createdOn).toLocaleString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true
+            });
+          }
+        }
 
         setSelectedScrap({
           ...request,
@@ -67,7 +103,7 @@ const AcceptedRequests = () => {
           city: scrapData.city || "Unknown",
           state: scrapData.state || "Unknown",
           contactNumber: scrapData.contactNumber || "Not provided",
-          createdOn: scrapData.createdOn?.toDate().toLocaleString() || "N/A",
+          createdOn: formattedDate,
           image: scrapData.image || request.image,
           sellerName: scrapData.name || "Unknown Seller",
         });
@@ -179,6 +215,12 @@ const AcceptedRequests = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const cardVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+    hover: { scale: 1.02, boxShadow: "0px 8px 15px rgba(0, 0, 0, 0.1)" },
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100vh", backgroundColor: "#f4f4f4" }}>
       <Sidebar />
@@ -222,94 +264,217 @@ const AcceptedRequests = () => {
             acceptedRequests.map((request) => (
               <Grid item xs={12} sm={6} md={4} key={request.id}>
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.05 }}
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  whileHover="hover"
                 >
                   <Card
                     sx={{
-                      borderRadius: "12px",
-                      backgroundColor: "white",
-                      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      borderRadius: "16px",
+                      overflow: "hidden",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      transition: "all 0.3s ease",
+                      background: "linear-gradient(to bottom right, #ffffff, #f8f9fa)",
+                      "&:hover": {
+                        transform: "translateY(-5px)",
+                        boxShadow: "0 12px 20px rgba(0,0,0,0.15)",
+                      }
                     }}
                   >
                     {request.image ? (
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={request.image}
-                        alt={request.scrapName}
-                        sx={{ borderRadius: "12px 12px 0 0" }}
-                      />
+                      <Box sx={{ position: "relative", paddingTop: "56.25%" }}>
+                        <CardMedia
+                          component="img"
+                          image={request.image}
+                          alt={request.scrapType}
+                          sx={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover"
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
+                            color: "white",
+                            padding: "20px 16px 12px",
+                          }}
+                        >
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: "bold",
+                              textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            {request.scrapType}
+                          </Typography>
+                        </Box>
+                      </Box>
                     ) : (
                       <Box
                         sx={{
-                          height: "200px",
-                          backgroundColor: "#e0e0e0",
+                          height: "140px",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
+                          backgroundColor: "#e3f2fd",
+                          color: "#004080",
                         }}
                       >
-                        <Typography variant="h6" sx={{ color: "#888" }}>
-                          No Image Available
+                        <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                          {request.scrapType}
                         </Typography>
                       </Box>
                     )}
-                    <CardContent>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "#004080",
-                          textAlign: "center",
-                        }}
-                      >
-                        {request.scrapName}
-                      </Typography>
-                      <Typography variant="body1">
-                        <strong>Seller:</strong> {request.sellerName}
-                      </Typography>
-                      <Typography variant="body1">
-                        <strong>Location:</strong> {request.city},{" "}
-                        {request.state}
-                      </Typography>
-                      <Typography variant="body1">
-                        <strong>Weight:</strong> {request.weight} {request.unit}
-                      </Typography>
+                    <CardContent 
+                      sx={{ 
+                        flexGrow: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        padding: "20px",
+                      }}
+                    >
+                      <Box sx={{ mb: 2 }}>
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: "500",
+                            color: "#004080",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 1
+                          }}
+                        >
+                          👤 {request.sellerName}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#666",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1
+                          }}
+                        >
+                          📞 {request.sellerContact}
+                        </Typography>
+                      </Box>
 
-                      {/* Action Buttons */}
+                      <Box sx={{ 
+                        display: "flex", 
+                        flexDirection: "column", 
+                        gap: 2, 
+                        mb: 2 
+                      }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            backgroundColor: "#e3f2fd",
+                            color: "#004080",
+                            padding: "4px 12px",
+                            borderRadius: "16px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            width: "fit-content"
+                          }}
+                        >
+                          ⚖️ {request.weight} {request.unit}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            backgroundColor: "#e8f5e9",
+                            color: "#2e7d32",
+                            padding: "8px 12px",
+                            borderRadius: "16px",
+                            display: "inline-flex",
+                            alignItems: "flex-start",
+                            gap: 0.5,
+                            width: "100%",
+                            lineHeight: "1.4",
+                            "& svg": {
+                              marginTop: "2px"
+                            }
+                          }}
+                        >
+                          <span style={{ flexShrink: 0 }}>📍</span>
+                          <span style={{ wordBreak: "break-word" }}>
+                            {`${request.address}, ${request.city}, ${request.state}${request.pinCode ? ` - ${request.pinCode}` : ''}`}
+                          </span>
+                        </Typography>
+                      </Box>
+
                       <Box
                         sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginTop: "10px",
+                          display: "grid",
+                          gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                          gap: 1,
+                          mt: "auto",
                         }}
                       >
-                        <Button
-                          variant="contained"
-                          color="info"
-                          sx={{ width: "32%" }}
-                          onClick={() => handleViewDetails(request)}
-                        >
-                          📄 View Details
-                        </Button>
-
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          sx={{ width: "32%" }}
-                          onClick={() => handleChat(request.id)}
-                        >
-                          💬 Chat
-                        </Button>
                         <Button
                           variant="contained"
                           color="success"
-                          sx={{ width: "32%" }}
                           onClick={() => handleCompleteRequest(request.id)}
+                          sx={{
+                            backgroundColor: "#2e7d32",
+                            color: "white",
+                            "&:hover": {
+                              backgroundColor: "#1b5e20",
+                              transform: "translateY(-2px)",
+                              boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
                         >
-                          ✅ Complete
+                          Complete
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => handleChat(request.id)}
+                          sx={{
+                            color: "#004080",
+                            borderColor: "#004080",
+                            "&:hover": {
+                              borderColor: "#003366",
+                              backgroundColor: "rgba(0,64,128,0.1)",
+                              transform: "translateY(-2px)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          Chat
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => handleViewDetails(request)}
+                          sx={{
+                            color: "#004080",
+                            borderColor: "#004080",
+                            "&:hover": {
+                              borderColor: "#003366",
+                              backgroundColor: "rgba(0,64,128,0.1)",
+                              transform: "translateY(-2px)",
+                            },
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          View Details
                         </Button>
                       </Box>
                     </CardContent>
@@ -339,11 +504,11 @@ const AcceptedRequests = () => {
           >
             <Box
               sx={{
-                width: { xs: "90%", sm: "75%", md: "50%" }, // Responsive width
-                maxWidth: "500px", // Ensures it doesn't get too wide
+                width: { xs: "90%", sm: "75%", md: "50%" },
+                maxWidth: "500px",
                 backgroundColor: "white",
                 borderRadius: "12px",
-                padding: { xs: "16px", md: "20px" }, // Smaller padding for small screens
+                padding: { xs: "16px", md: "24px" },
                 boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
                 position: "relative",
                 maxHeight: "90vh",
@@ -353,101 +518,108 @@ const AcceptedRequests = () => {
               <Typography
                 variant="h5"
                 sx={{
-                  fontWeight: "bold",
                   color: "#004080",
+                  fontFamily: "Arvo, serif",
+                  fontSize: "24px",
+                  fontWeight: "bold",
                   textAlign: "center",
-                  marginBottom: "10px",
+                  marginBottom: "24px",
                 }}
               >
                 Scrap Details
               </Typography>
 
-              {/* Scrap Image */}
               {selectedScrap.image && (
                 <Box
                   sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    marginBottom: "10px",
+                    width: "100%",
+                    height: "250px",
+                    overflow: "hidden",
+                    borderRadius: "8px",
+                    marginBottom: "24px",
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
                   }}
                 >
-                  <CardMedia
-                    component="img"
-                    image={selectedScrap.image}
+                  <img
+                    src={selectedScrap.image}
                     alt={selectedScrap.scrapType}
-                    sx={{
-                      width: "auto",
-                      maxWidth: "100%",
-                      maxHeight: "250px",
-                      borderRadius: "8px",
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover"
                     }}
                   />
                 </Box>
               )}
 
-              {/* Scrap Information */}
-              <Box sx={{ padding: "10px" }}>
+              <Box sx={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "16px",
+              }}>
                 {[
                   { label: "Scrap Name", value: selectedScrap.scrapName },
                   { label: "Scrap Type", value: selectedScrap.scrapType },
-                  {
-                    label: "Weight",
-                    value: `${selectedScrap.weight} ${selectedScrap.unit}`,
-                  },
-                  { label: "Price", value: selectedScrap.price },
-                  { label: "Pickup Status", value: selectedScrap.pickupStatus },
-                  {
-                    label: "Address",
-                    value: `${selectedScrap.address}, ${selectedScrap.city}, ${selectedScrap.state} - ${selectedScrap.pinCode}`,
-                  },
-                  {
-                    label: "Contact Number",
-                    value: selectedScrap.contactNumber,
-                  },
+                  { label: "Weight", value: `${selectedScrap.weight} ${selectedScrap.unit}` },
+                  { label: "Address", value: `${selectedScrap.address}, ${selectedScrap.city}, ${selectedScrap.state}${selectedScrap.pinCode ? ` - ${selectedScrap.pinCode}` : ''}` },
+                  { label: "Contact Number", value: selectedScrap.contactNumber },
                   { label: "Posted On", value: selectedScrap.createdOn },
-                  { label: "Seller Name", value: selectedScrap.sellerName },
+                  { label: "Seller Name", value: selectedScrap.sellerName }
                 ].map((item, index) => (
                   <Box
                     key={index}
                     sx={{
                       display: "flex",
-                      alignItems: "center",
-                      marginBottom: "8px",
+                      alignItems: "flex-start",
+                      padding: "8px 16px",
+                      backgroundColor: index % 2 === 0 ? "#f8f9fa" : "white",
+                      borderRadius: "8px",
                     }}
                   >
                     <Typography
-                      variant="body1"
                       sx={{
-                        fontSize: "18px",
-                        fontWeight: "bold",
-                        color: "#000",
-                        minWidth: "150px",
+                        width: "140px",
+                        color: "#666",
+                        fontWeight: "500",
+                        flexShrink: 0,
                       }}
                     >
                       {item.label}:
                     </Typography>
                     <Typography
-                      variant="body1"
-                      sx={{ color: "#000", marginLeft: "8px" }}
+                      sx={{
+                        flex: 1,
+                        color: "#000",
+                        marginLeft: "16px",
+                        wordBreak: "break-word",
+                      }}
                     >
-                      {item.value}
+                      {item.value || "Not provided"}
                     </Typography>
                   </Box>
                 ))}
               </Box>
 
-              {/* Close Button */}
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "center",
-                  marginTop: "15px",
+                  marginTop: "24px",
                 }}
               >
                 <Button
                   variant="contained"
                   color="error"
                   onClick={() => setOpenDetailsModal(false)}
+                  sx={{
+                    minWidth: "120px",
+                    backgroundColor: "#dc3545",
+                    "&:hover": {
+                      backgroundColor: "#c82333",
+                      transform: "translateY(-2px)",
+                    },
+                    transition: "all 0.3s ease",
+                  }}
                 >
                   Close
                 </Button>
