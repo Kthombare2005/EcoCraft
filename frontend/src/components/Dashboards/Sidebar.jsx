@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, IconButton, Typography, Box, useMediaQuery, Badge } from "@mui/material";
-import { Home, Store, Build, AccountCircle, ExitToApp, Menu, LocalShipping } from "@mui/icons-material";
+import { 
+  Dashboard as DashboardIcon,
+  Recycling as RecyclingIcon,
+  AutoAwesome as TransformIcon,
+  AccountCircle as ProfileIcon,
+  Logout as LogoutIcon,
+  Menu as MenuIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  ShoppingCart as CartIcon
+} from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth, db, onAuthStateChanged } from "../../firebaseConfig";
 import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
@@ -77,9 +87,21 @@ const Sidebar = () => {
   };
 
   const menuItems = [
-    { text: "Home", icon: <Home />, path: "/dashboard/seller" },
-    { text: "Sell Scrap", icon: <Store />, path: "/dashboard/seller/scrap-management" },
-    { text: "Transform Scrap", icon: <Build />, path: "/transform-scrap" },
+    { 
+      text: "Home", 
+      icon: <DashboardIcon sx={{ color: "#004080" }} />, 
+      path: "/dashboard/seller" 
+    },
+    { 
+      text: "Sell Scrap", 
+      icon: <RecyclingIcon sx={{ color: "#004080" }} />, 
+      path: "/dashboard/seller/scrap-management" 
+    },
+    { 
+      text: "Transform Scrap", 
+      icon: <TransformIcon sx={{ color: "#004080" }} />, 
+      path: "/transform-scrap" 
+    },
     { 
       text: "Accepted Pickups", 
       icon: (
@@ -100,12 +122,21 @@ const Sidebar = () => {
             }
           }}
         >
-          <LocalShipping />
+          <CheckCircleIcon sx={{ color: "#004080" }} />
         </Badge>
       ), 
       path: "/dashboard/seller/accepted-pickups" 
     },
-    { text: "Profile", icon: <AccountCircle />, path: "/profile" },
+    { 
+      text: "Declined Requests", 
+      icon: <CancelIcon sx={{ color: "#004080" }} />, 
+      path: "/dashboard/seller/declined-pickups" 
+    },
+    { 
+      text: "Profile", 
+      icon: <ProfileIcon sx={{ color: "#004080" }} />, 
+      path: "/profile" 
+    },
   ];
 
   return (
@@ -155,7 +186,7 @@ const Sidebar = () => {
           </Typography>
         )}
         <IconButton onClick={() => setOpen(!open)} sx={{ color: "#004080" }}>
-          <Menu />
+          <MenuIcon />
         </IconButton>
       </div>
 
@@ -244,7 +275,7 @@ const Sidebar = () => {
               justifyContent: open ? "flex-start" : "center",
             }}
           >
-            <ExitToApp />
+            <LogoutIcon />
           </ListItemIcon>
           {open && <ListItemText primary="Logout" sx={{ marginLeft: "8px" }} />}
         </ListItem>

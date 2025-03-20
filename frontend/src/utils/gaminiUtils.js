@@ -202,13 +202,17 @@ import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore"; 
 import { log } from "./log";
 import axios from "axios";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Gamini API Constants
-const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
+const GAMINI_API_KEY = "AIzaSyCLYSE-DC6RTRS8Pa58NX_Zz2q-5wZdbpw";
 const GAMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GAMINI_API_KEY}`;
 
+// Initialize the Gemini API
+const genAI = new GoogleGenerativeAI(GAMINI_API_KEY);
+
 /**
- * Fetch nearby scrapers within a 4-5 km radius using Gamini API.
+ * Fetch nearby scrapers within a 4-5 km radius using Gemini API.
  * @param {string} city - The city of the user.
  * @param {string} state - The state of the user.
  * @returns {Promise<Array>} - Returns an array of nearby scrapers.
@@ -218,6 +222,15 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
     console.error("City and state are required to fetch nearby scrapers.");
     return [];
   }
+
+  // Add the demo scraper that should always be visible
+  const demoScraper = {
+    id: "XJuY6X93iFP1pKMBPnjRS6Eo7gj1", // Adding the ID from Firebase
+    name: "Demoscraper",
+    shop_address: "Rajwada",
+    contact_number: "9755421622",
+    email: "demoscraper@gmail.com"
+  };
 
   const prompt = `
   You are an expert in geospatial analysis and a local marketplace advisor. Your task is to identify the **5 nearest scrap dealers** located within a **4-5 km radius** of the following location: **${city}, ${state}, India**.
@@ -249,81 +262,118 @@ export const fetchNearbyScrapersWithGamini = async (city, state) => {
   ]
   `;
 
-  const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: prompt }],
-      },
-    ],
-  };
-
   try {
-    // Fetch Gamini API Results
-    const response = await axios.post(GAMINI_API_URL, requestBody, {
+    const response = await axios.post(GAMINI_API_URL, {
+      contents: [{
+        parts: [{ text: prompt }]
+      }]
+    }, {
       headers: {
-        "Content-Type": "application/json",
-      },
+        'Content-Type': 'application/json'
+      }
     });
 
-    const candidateText = response.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    const sanitizedText = candidateText?.replace(/```json|```/g, "").trim() || "[]";
+    const text = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim() || '';
 
+    // Remove any triple backticks from the response
+    const sanitizedText = text.replace(/```json|```/g, "").trim();
+
+    // Parse the sanitized JSON text
     let scrapersList = [];
     try {
       scrapersList = JSON.parse(sanitizedText);
       if (!Array.isArray(scrapersList)) {
         console.error("Parsed data is not an array:", scrapersList);
-        scrapersList = [];
+        return [demoScraper]; // Return only demo scraper if parsing fails
       }
     } catch (jsonError) {
-      console.error("Error parsing Gamini JSON response:", jsonError);
-      scrapersList = [];
+      console.error("Error parsing Gemini JSON response:", jsonError);
+      return [demoScraper]; // Return only demo scraper if parsing fails
     }
 
-    // Fetch scrapers from Firestore and include their document ID
-    const scraperQuery = await getDocs(collection(db, "users")); // Fetch all users
-    const firestoreScrapers = scraperQuery.docs
-      .filter((doc) => doc.data().accountType === "scraper") // Ensure only scrapers
-      .map((doc) => ({
-        id: doc.id, // Assign Firestore document ID as scraperId
-        ...doc.data(),
-      }));
+    // Add the demo scraper to the beginning of the list
+    scrapersList.unshift(demoScraper);
 
-    // Merge Firestore scrapers with Gamini API results if address matches
-    scrapersList = scrapersList.map((scraper) => {
-      const firestoreScraper = firestoreScrapers.find((fs) => fs.shop_address === scraper.shop_address);
-      return {
-        id: firestoreScraper?.id || null, // Assign Firestore ID if found
-        ...scraper,
-      };
-    });
-
-    // Fetch "demoscraper" from Firebase
-    const demoScraperRef = doc(db, "users", "XJuY6X93iFP1pKMBPnjRS6Eo7gj1"); // Use the exact document ID
-    const demoScraperSnap = await getDoc(demoScraperRef);
-
-    if (demoScraperSnap.exists()) {
-      log("demoscraper data:", demoScraperSnap.data());
-      const demoScraper = {
-        id: demoScraperSnap.id, // Assign Firestore ID
-        name: demoScraperSnap.data().name || "Demoscraper",
-        shop_address: demoScraperSnap.data().shop_address || "Demo Address",
-        contact_number: demoScraperSnap.data().ContactNumber || "N/A",
-      };
-
-      // Ensure "demoscraper" is not duplicated
-      if (!scrapersList.some((scraper) => scraper.id === demoScraper.id)) {
-        scrapersList.unshift(demoScraper); // Add "demoscraper" at the top
-      }
-    } else {
-      console.warn("demoscraper account not found in Firebase.");
-    }
-
-    log("Final Nearby Scrapers List (with Firestore IDs & demoscraper):", scrapersList);
+    log("Final Nearby Scrapers List:", scrapersList);
     return scrapersList;
   } catch (error) {
-    console.error("Error fetching nearby scrapers:", error);
+    console.error("Error fetching nearby scrapers from Gemini API:", error);
+    return [demoScraper]; // Return only demo scraper if API call fails
+  }
+};
+
+/**
+ * Fetch current scrap rates for Indore, Madhya Pradesh market
+ * @returns {Promise<Array>} - Returns an array of scrap rates
+ */
+export const fetchScrapRatesWithGamini = async () => {
+  const prompt = `
+  You are a market research expert specializing in scrap material prices in Indore, Madhya Pradesh, India.
+  Provide the CURRENT market rates for different types of scrap materials.
+
+  ### Requirements:
+  1. Focus on scrap rates specifically for Indore, Madhya Pradesh market
+  2. Provide rates in INR per kg
+  3. Include rates for these categories:
+     - Metal (Iron, Aluminum, Copper, Brass)
+     - Paper
+     - Plastic
+     - Cardboard
+     - Glass
+     - Electronics
+     - Textiles
+     - Wood
+     - Rubber
+     - Batteries
+
+  ### Response Format:
+  Return ONLY a JSON array with this structure:
+  [
+    {
+      "category": "Metal",
+      "subcategory": "Iron",
+      "rate": "32",
+      "unit": "per kg",
+      "trend": "stable",
+      "last_updated": "2024-03"
+    }
+  ]
+
+  Note: Rates should be realistic for the Indore market. If exact rates aren't available, provide approximate rates based on market trends.`;
+
+  try {
+    const response = await axios.post(GAMINI_API_URL, {
+      contents: [{
+        parts: [{ text: prompt }]
+      }]
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const text = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    // Remove any triple backticks from the response
+    const sanitizedText = text.replace(/```json|```/g, "").trim();
+
+    // Parse the sanitized JSON text
+    let ratesList = [];
+    try {
+      ratesList = JSON.parse(sanitizedText);
+      if (!Array.isArray(ratesList)) {
+        console.error("Parsed data is not an array:", ratesList);
+        return [];
+      }
+    } catch (jsonError) {
+      console.error("Error parsing Gemini JSON response:", jsonError);
+      return [];
+    }
+
+    log("Final Scrap Rates List:", ratesList);
+    return ratesList;
+  } catch (error) {
+    console.error("Error fetching scrap rates from Gemini API:", error);
     return [];
   }
 };

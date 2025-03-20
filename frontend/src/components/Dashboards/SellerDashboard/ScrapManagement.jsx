@@ -38,11 +38,11 @@ import { log } from "../../../utils/log";
 import axios from "axios";
 import { updateDoc, getDocs, where, query } from "firebase/firestore";
 import { Error } from "@mui/icons-material";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 
-const GAMINI_API_KEY = "AIzaSyB1El1CE7z3rS6yEAuDgWAzlfwZJWD4lTw";
-const GAMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
+const GAMINI_API_KEY = "AIzaSyCLYSE-DC6RTRS8Pa58NX_Zz2q-5wZdbpw";
+const GAMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=";
 
 const ScrapManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -93,6 +93,13 @@ const ScrapManagement = () => {
   const [imageValidating, setImageValidating] = useState(false);
   const [addressValidating, setAddressValidating] = useState(false);
 
+  const demoScraper = {
+    name: "Demoscraper",
+    shop_address: "Rajwada",
+    contact_number: "9755421622",
+    email: "demoscraper@gmail.com"
+  };
+
   const showNotification = (message, severity = "info") => {
     setNotification({ open: true, message, severity });
   };
@@ -107,10 +114,8 @@ const ScrapManagement = () => {
       return;
     }
 
-    if (!scraper?.id) {
-      showNotification("Scraper data is invalid. Please try again.", "error");
-      return;
-    }
+    // Check if it's the demo scraper or a regular scraper
+    const scraperId = scraper.id || "XJuY6X93iFP1pKMBPnjRS6Eo7gj1"; // Use demo scraper ID as fallback
 
     try {
       const pickupRequestsRef = collection(db, "pickupRequests");
@@ -147,7 +152,7 @@ const ScrapManagement = () => {
 
       const pickupData = {
         scrapId: selectedScrap.id,
-        scraperId: scraper.id,
+        scraperId: scraperId,
         userId: userId || "Unknown User",
         sellerName,
         scrapName: selectedScrap.scrapName || "Unknown Scrap",
@@ -256,6 +261,7 @@ const ScrapManagement = () => {
       } catch (error) {
         console.error("Error fetching nearby scrapers:", error);
         setNearbyScrapers([]);
+        showNotification("Failed to fetch nearby scrapers", "error");
       } finally {
         setLoading(false);
       }
@@ -287,13 +293,18 @@ const ScrapManagement = () => {
         const listings = snapshot.docs
           .map((doc) => {
             const scrapData = doc.data();
+            const status = statusMap[doc.id] || "No Pickup Requested";
             return {
               id: doc.id,
               ...scrapData,
-              pickupStatus: statusMap[doc.id] || "No Pickup Requested"
+              pickupStatus: status
             };
           })
-          .filter(scrap => statusMap[scrap.id] !== "Accepted");
+          .filter(scrap => 
+            scrap.pickupStatus !== "Accepted" && 
+            scrap.pickupStatus !== "Declined" &&
+            scrap.pickupStatus !== "Completed"
+          );
 
         setScrapListings(listings);
         setLoading(false);
@@ -304,6 +315,7 @@ const ScrapManagement = () => {
         unsubscribeScrapListings();
       };
     } catch (err) {
+      console.error("Error in fetchScrapListingsRealtime:", err);
       setError(err.message || 'Failed to fetch data');
       setLoading(false);
     }
@@ -442,47 +454,35 @@ const ScrapManagement = () => {
     - "Relevant Scrap" if the image matches the scrap type.
     - "Not Relevant Scrap" if the image does not match the scrap type.`;
 
-    const contents = [
-      {
-        role: "user",
-        parts: [
-          { inline_data: { mime_type: "image/jpeg", data: imageData } },
-          { text: dynamicPrompt },
-        ],
-      },
-    ];
-
     try {
-      const response = await fetch(`${GAMINI_API_URL}${GAMINI_API_KEY}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GAMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [
+              {
+                inlineData: {
+                  data: imageData,
+                  mimeType: "image/jpeg"
+                }
+              },
+              { text: dynamicPrompt }
+            ]
+          }]
         },
-        body: JSON.stringify({ contents }),
-      });
-
-      const result = await response.json();
-
-      log("IDX API Response:", result);
-
-      if (!result.candidates || result.candidates.length === 0) {
-        console.error("Unexpected API response structure:", result);
-        return false;
-      }
-
-      const candidateText =
-        result.candidates[0]?.content?.parts?.[0]?.text?.trim();
-      log("Candidate Text:", candidateText);
-
-      const isRelevantScrap = candidateText === "Relevant Scrap";
-      log(
-        "Validation Result:",
-        isRelevantScrap ? "Relevant Scrap" : "Not Relevant Scrap"
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
-      return isRelevantScrap;
+      const text = response.data.candidates[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+      log("Image Validation Response:", text);
+      return text === "Relevant Scrap";
     } catch (error) {
-      console.error("Error validating image with IDX:", error);
+      console.error("Error validating image with Gemini:", error);
       return false;
     }
   };
@@ -821,9 +821,18 @@ const ScrapManagement = () => {
 
                     <Typography
                       variant="h6"
-                      sx={{ marginTop: "20px", fontWeight: "bold" }}
+                      sx={{ 
+                        marginTop: "20px", 
+                        fontWeight: "bold",
+                        color: "#004080",
+                        fontFamily: "'Ubuntu', sans-serif",
+                        fontSize: "1.1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1
+                      }}
                     >
-                      Nearby Scrap Dealers (Within 4-5 km):
+                      <span>📍</span> Nearby Scrap Dealers (Within 4-5 km)
                     </Typography>
 
                     {nearbyScrapers.length > 0 ? (
@@ -832,12 +841,17 @@ const ScrapManagement = () => {
                           key={index}
                           sx={{
                             padding: "15px",
-                            border: "1px solid #ccc",
+                            border: "1px solid #e0e0e0",
                             borderRadius: "12px",
-                            backgroundColor: "#f9f9f9",
+                            backgroundColor: "#f8f9fa",
                             marginBottom: "15px",
                             fontFamily: "'Ubuntu', sans-serif",
-                            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
+                            boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.05)",
+                            transition: "transform 0.2s, box-shadow 0.2s",
+                            "&:hover": {
+                              transform: "translateY(-2px)",
+                              boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
+                            }
                           }}
                         >
                           <Typography
@@ -847,9 +861,12 @@ const ScrapManagement = () => {
                               color: "#004080",
                               fontFamily: "'Ubuntu', sans-serif",
                               marginBottom: "10px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1
                             }}
                           >
-                            {scraper.name}
+                            <span>🏪</span> {scraper.name}
                           </Typography>
                           <Typography
                             sx={{
@@ -857,60 +874,91 @@ const ScrapManagement = () => {
                               fontFamily: "'Ubuntu', sans-serif",
                               fontSize: "0.9rem",
                               color: "#555",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 1
                             }}
                           >
-                            📍 {scraper.shop_address}
-                          </Typography>
-                          <Typography
-                            sx={{
-                              marginTop: "5px",
-                              fontFamily: "'Ubuntu', sans-serif",
-                              fontSize: "0.9rem",
-                              color: "#555",
-                            }}
-                          >
-                            📞 {scraper.contact_number || "N/A"}
+                            <span>📍</span> {scraper.shop_address}
                           </Typography>
                           {scraper.contact_number && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              href={`tel:${scraper.contact_number}`}
+                            <Typography
                               sx={{
-                                marginTop: "10px",
+                                marginTop: "5px",
                                 fontFamily: "'Ubuntu', sans-serif",
-                                fontWeight: "600",
-                                marginRight: "10px",
+                                fontSize: "0.9rem",
+                                color: "#555",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1
                               }}
                             >
-                              Call Now
-                            </Button>
+                              <span>📞</span> {scraper.contact_number}
+                            </Typography>
                           )}
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            sx={{
-                              marginTop: "10px",
-                              fontFamily: "'Ubuntu', sans-serif",
-                              fontWeight: "600",
-                            }}
-                            onClick={() => schedulePickup(scraper)}
-                          >
-                            Schedule a Pickup
-                          </Button>
+                          <Box sx={{ display: "flex", gap: 1, marginTop: "10px" }}>
+                            {scraper.contact_number && (
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                href={`tel:${scraper.contact_number}`}
+                                sx={{
+                                  fontFamily: "'Ubuntu', sans-serif",
+                                  fontWeight: "600",
+                                  textTransform: "none",
+                                  borderRadius: "8px",
+                                  backgroundColor: "#1976d2",
+                                  "&:hover": {
+                                    backgroundColor: "#1565c0",
+                                  }
+                                }}
+                              >
+                                Call Now
+                              </Button>
+                            )}
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              sx={{
+                                fontFamily: "'Ubuntu', sans-serif",
+                                fontWeight: "600",
+                                textTransform: "none",
+                                borderRadius: "8px",
+                                backgroundColor: "#2e7d32",
+                                "&:hover": {
+                                  backgroundColor: "#1b5e20",
+                                }
+                              }}
+                              onClick={() => schedulePickup(scraper)}
+                            >
+                              Schedule Pickup
+                            </Button>
+                          </Box>
                         </Box>
                       ))
                     ) : (
-                      <Typography
+                      <Box
                         sx={{
+                          padding: "20px",
                           textAlign: "center",
-                          fontFamily: "'Ubuntu', sans-serif",
-                          fontStyle: "italic",
-                          color: "gray",
+                          backgroundColor: "#f8f9fa",
+                          borderRadius: "12px",
+                          marginTop: "10px"
                         }}
                       >
-                        No nearby scrapers found.
-                      </Typography>
+                        <Typography
+                          sx={{
+                            fontFamily: "'Ubuntu', sans-serif",
+                            color: "#666",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 1
+                          }}
+                        >
+                          <span>⚠️</span> No nearby scrapers found within 4-5 km radius.
+                        </Typography>
+                      </Box>
                     )}
                   </>
                 )}
@@ -920,6 +968,12 @@ const ScrapManagement = () => {
                   onClick={handleCloseDialog}
                   color="primary"
                   variant="contained"
+                  sx={{
+                    fontFamily: "'Ubuntu', sans-serif",
+                    fontWeight: "600",
+                    textTransform: "none",
+                    borderRadius: "8px"
+                  }}
                 >
                   Close
                 </Button>

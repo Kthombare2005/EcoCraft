@@ -12,6 +12,7 @@ import ScrapManagement from "./components/Dashboards/SellerDashboard/ScrapManage
 import AvailableRequests from "./components/Dashboards/ScraperDashboard/AvailableRequests";
 import AcceptedRequests from "./components/Dashboards/ScraperDashboard/AcceptedRequests";
 import AcceptedPickups from "./components/Dashboards/SellerDashboard/AcceptedPickups";
+import DeclinedPickups from "./components/Dashboards/SellerDashboard/DeclinedPickups";
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const [user, setUser] = useState(null);
@@ -78,7 +79,8 @@ const App = () => {
       <Route path="/dashboard/seller" element={<ProtectedRoute element={<SellerDashboard />} allowedRoles={["seller"]} />} />
       <Route path="/dashboard/seller/scrap-management" element={<ProtectedRoute element={<ScrapManagement />} allowedRoles={["seller"]} />} />
       <Route path="/profile" element={<ProtectedRoute element={<Profile />} allowedRoles={["seller", "scraper"]} />} />
-      <Route path="/dashboard/seller/accepted-pickups" element={<AcceptedPickups />} />
+      <Route path="/dashboard/seller/accepted-pickups" element={<ProtectedRoute element={<AcceptedPickups />} allowedRoles={["seller"]} />} />
+      <Route path="/dashboard/seller/declined-pickups" element={<ProtectedRoute element={<DeclinedPickups />} allowedRoles={["seller"]} />} />
 
       <Route path="/dashboard/scraper" element={<ProtectedRoute element={<ScraperDashboard />} allowedRoles={["scraper"]} />} />
       <Route path="/dashboard/scraper/requests" element={<ProtectedRoute element={<AvailableRequests />} allowedRoles={["scraper"]} />} />
